@@ -217,15 +217,7 @@
     analytics.visit();
   }
   const mobile = window.matchMedia('(max-width: 850px)');
-  let primaryVisible = 'IntersectionObserver' in window;
-  const updateMini = () => { $('mini-player').hidden = !(immersed || (mobile.matches && !primaryVisible)); };
-  if ('IntersectionObserver' in window) {
-    const observer = new window.IntersectionObserver(entries => {
-      primaryVisible = entries[0].isIntersecting;
-      updateMini();
-    });
-    observer.observe($('play'));
-  }
+  const updateMini = () => { $('mini-player').hidden = !(immersed || mobile.matches); };
   // Older embedded WebKit exposes only addListener; a layout enhancement must
   // never prevent the playback controls below from being wired up.
   if (typeof mobile.addEventListener === 'function') mobile.addEventListener('change', updateMini);
