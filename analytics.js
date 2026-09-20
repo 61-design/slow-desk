@@ -2,6 +2,15 @@
 (function () {
   'use strict';
   const key = 'slow-desk-analytics-v1';
+  function uuid() {
+    try {
+      if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+      const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+      return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+    } catch (_) { return null; }
+  }
   class SlowDeskAnalytics {
     constructor({endpoint = ''} = {}) {
       this.endpoint = endpoint;
@@ -31,14 +40,18 @@
 
     send(event, track = null) {
       if (!this.configured || !this.enabled) return;
+      const eventId = uuid();
+      if (!eventId) return;
       if (!this.visitor) {
-        this.visitor = crypto.randomUUID();
+        this.visitor = uuid();
+        if (!this.visitor) return;
         try { localStorage.setItem(key, JSON.stringify({enabled:true, visitor:this.visitor})); } catch (_) {}
       }
-      if (!this.session) this.session = crypto.randomUUID();
+      if (!this.session) this.session = uuid();
+      if (!this.session) return;
       const source = new URLSearchParams(window.location.search).get('from');
       const body = JSON.stringify({
-        version:1, event_id:crypto.randomUUID(), event, occurred_at:new Date().toISOString(),
+        version:1, event_id:eventId, event, occurred_at:new Date().toISOString(),
         visitor_id:this.visitor, session_id:this.session,
         source:['share','wechat','friend'].includes(source) ? source : 'direct',
         track_id:track ? track.id : '', track_title:track ? track.title : '',

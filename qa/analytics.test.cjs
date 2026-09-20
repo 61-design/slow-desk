@@ -4,11 +4,11 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const {randomUUID} = require('node:crypto');
 const code = fs.readFileSync(require('node:path').join(__dirname,'../analytics.js'),'utf8');
-function setup({endpoint='https://collector.example/events', saved, dnt, protocol='https:'}={}) {
+function setup({endpoint='https://collector.example/events', saved, dnt, protocol='https:', cryptoOverride}={}) {
   const requests=[], writes=[], window={location:{protocol,search:'?from=share&thought=private-secret&search=private-secret'}};
   let time=0;
   const store=new Map(saved ? [['slow-desk-analytics-v1',JSON.stringify(saved)]] : []);
-  vm.runInNewContext(code,{window,URLSearchParams,crypto:{randomUUID},Date,performance:{now:()=>time},navigator:{doNotTrack:dnt},
+  vm.runInNewContext(code,{window,URLSearchParams,crypto:cryptoOverride || {randomUUID},Date,performance:{now:()=>time},navigator:{doNotTrack:dnt},
     localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>{writes.push(v);store.set(k,v);}},
     fetch:(url,options)=>{requests.push({url,...options,body:JSON.parse(options.body)});return Promise.resolve({ok:true});}});
   const tracker=new window.SlowDeskAnalytics({endpoint});
@@ -70,4 +70,12 @@ test('switching track resets counters and listeners, and does not misattribute p
   e.tracker.bind(e.media,next,()=>true);e.media.currentTime=0;e.media.emit('playing');
   for(let i=0;i<30;i++)e.advance();
   assert.deepEqual(e.requests.map(x=>[x.body.event,x.body.track_id]),[['play_start','echo-public-night'],['play_start','echo-public-dawn'],['listen_30s','echo-public-dawn']]);
+});
+test('older browsers fall back to secure UUIDs or skip analytics without breaking playback',()=>{
+  let value=0;
+  const fallback=setup({cryptoOverride:{getRandomValues(bytes){for(let i=0;i<bytes.length;i++)bytes[i]=++value%256;return bytes;}}});
+  assert.doesNotThrow(()=>fallback.tracker.visit());assert.equal(fallback.requests.length,1);
+  for(const field of ['event_id','visitor_id','session_id'])assert.match(fallback.requests[0].body[field],/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
+  const unavailable=setup({cryptoOverride:{}});assert.doesNotThrow(()=>{unavailable.tracker.visit();unavailable.media.emit('playing');unavailable.advance()});
+  assert.equal(unavailable.requests.length,0);assert.equal(unavailable.writes.length,0);
 });
