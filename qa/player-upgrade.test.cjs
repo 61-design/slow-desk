@@ -11,7 +11,7 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-function environment({ rainAvailable = true, resume = null, sampleRate = 1000 } = {}) {
+function environment({ rainAvailable = true, resume = null, sampleRate = 1000, fetcher = null } = {}) {
   let now = 0, nextTimer = 0;
   const timers = new Map();
   const audios = [], contexts = [], states = [], dom = [];
@@ -48,6 +48,7 @@ function environment({ rainAvailable = true, resume = null, sampleRate = 1000 } 
     }
     async resume() { if (resume) await resume.promise; this.state = 'running'; }
     createGain() { return Object.assign(node(), { gain: parameter() }); }
+    async decodeAudioData() { const buffer = this.createBuffer(1, this.sampleRate); buffer.getChannelData(0).fill(.07); return buffer; }
     createBiquadFilter() { return Object.assign(node(), { frequency: parameter() }); }
     createBuffer(channels, length) { const data = new Float32Array(length); return { getChannelData: () => data }; }
     createBufferSource() {
@@ -65,7 +66,7 @@ function environment({ rainAvailable = true, resume = null, sampleRate = 1000 } 
   ] });
   if (rainAvailable) window.AudioContext = FakeContext;
   vm.runInNewContext(source, {
-    window, document, Audio: FakeAudio, Date: { now: () => 1788170400000 + now }, performance: { now: () => now },
+    window, document, fetch:fetcher || (async () => ({ok:true,arrayBuffer:async () => new ArrayBuffer(4)})), Audio: FakeAudio, Date: { now: () => 1788170400000 + now }, performance: { now: () => now },
     setTimeout(callback, delay) { const id = ++nextTimer; timers.set(id, { callback, due: now + delay }); return id; },
     clearTimeout(id) { timers.delete(id); }
   });
@@ -87,14 +88,36 @@ function environment({ rainAvailable = true, resume = null, sampleRate = 1000 } 
 
 async function test(name, run) { await run(); passed.push(name); }
 
-async function flush() { for (let i = 0; i < 8; i++) await Promise.resolve(); }
+async function flush() { for (let i = 0; i < 30; i++) await Promise.resolve(); }
 async function ended(env) { env.engine.audio.finish(); await flush(); }
 
 (async () => {
-  await test('环境声默认输出有可用电平，音量滑块不再被隐藏倍率再次衰减', async () => {
+  await test('录音载入途中暂停，完成后不会偷跑；重播复用已解码声音', async () => {
+    const waiting = deferred(); let requests = 0;
+    const env = environment({fetcher:() => {requests++; return waiting.promise;}});
+    env.engine.setMusic(false); env.engine.setEffect('ocean', true);
+    const started = env.engine.start(); await flush(); env.engine.pause(true);
+    waiting.resolve({ok:true,arrayBuffer:async () => new ArrayBuffer(4)}); await started;
+    assert.equal(env.engine.playing, false); assert.ok(!env.engine.oceanSource);
+    await env.engine.start(); assert.equal(env.engine.oceanSource.started, true); assert.equal(requests, 1);
+    env.engine.setSleepTimer(1); env.advance(60000); assert.equal(env.engine.active, false); assert.equal(env.engine.oceanSource, null);
+  });
+  await test('录音加载失败不打断其他声音，重试可以恢复', async () => {
+    let fail = true;
+    const env = environment({fetcher:async () => ({ok:!fail,arrayBuffer:async () => new ArrayBuffer(4)})});
+    env.engine.setMusic(false); env.engine.setRain(true); env.engine.setEffect('stream', true); await env.engine.start();
+    assert.equal(env.engine.rainSource.started, true); assert.ok(!env.engine.streamSource);
+    assert.match(env.engine.message, /流水暂时未能播放/);
+    fail = false; await env.engine.start(); assert.equal(env.engine.streamSource.started, true);
+    assert.doesNotMatch(env.engine.message, /未能/);
+    const rain = env.engine.rainGain.gain.value;
+    env.engine.setEffectVolume('stream', .43); assert.equal(env.engine.streamGain.gain.value, .43); assert.equal(env.engine.rainGain.gain.value, rain);
+    await env.engine.setEffect('stream', false); assert.equal(env.engine.streamSource, null); assert.equal(env.engine.rainSource.started, true);
+  });
+  await test('合成轻雨默认输出有可用电平，音量滑块不再被隐藏倍率再次衰减', async () => {
     const env = environment({sampleRate:48000}); env.engine.setMusic(false); env.engine.setRain(true); env.engine.setFire(true);
     await env.engine.start();
-    for (const kind of ['rain','fire']) {
+    for (const kind of ['rain']) {
       const data = env.engine[`${kind}Source`].buffer.getChannelData(0);
       let energy = 0; for (const value of data) energy += value * value;
       const output = Math.sqrt(energy/data.length) * env.engine[`${kind}Gain`].gain.value;
@@ -317,9 +340,9 @@ async function ended(env) { env.engine.audio.finish(); await flush(); }
     env.hidden(true); await env.engine.start(); assert.equal(env.engine.audio.volume, .4);
     assert.equal(env.engine.setSleepTimer(-1), false); assert.equal(env.engine.setSleepTimer('bad'), false);
   });
-  await test('真实48k采样生成18秒篝火、9秒雨声，有限值/保守峰值/接缝连续', async () => {
+  await test('真实48k采样生成9秒雨声，有限值/保守峰值/接缝连续', async () => {
     const env = environment({ sampleRate: 48000 }); env.engine.setMusic(false); env.engine.setRain(true); env.engine.setFire(true); await env.engine.start();
-    for (const [kind, seconds] of [['fire', 18], ['rain', 9]]) {
+    for (const [kind, seconds] of [['rain', 9]]) {
       const source = env.engine[`${kind}Source`]; const samples = source.buffer.getChannelData(0);
       assert.equal(samples.length, seconds * 48000); let peak = 0, power = 0;
       for (const value of samples) { assert.ok(Number.isFinite(value)); peak = Math.max(peak, Math.abs(value)); power += value * value; }

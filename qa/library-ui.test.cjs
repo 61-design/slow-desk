@@ -132,6 +132,7 @@ function environment({ stored = null, rainAvailable = true, storageBlocked = fal
     constructor() { this.state = 'suspended'; this.currentTime = 0; this.sampleRate = 1000; this.destination = node(); this.gains = []; this.sources = []; contexts.push(this); }
     async resume() { this.state = 'running'; }
     createGain() { const gain = Object.assign(node(), { gain: parameter() }); this.gains.push(gain); return gain; }
+    async decodeAudioData() { const buffer = this.createBuffer(1, this.sampleRate); buffer.getChannelData(0).fill(.07); return buffer; }
     createBiquadFilter() { return Object.assign(node(), { frequency: parameter() }); }
     createBuffer(channels, length) { const data = new Float32Array(length); return { getChannelData: () => data }; }
     createBufferSource() { const source = Object.assign(node(), { started:false, stopped:false, start() { this.started=true; }, stop() { this.stopped=true; } }); this.sources.push(source); return source; }
@@ -145,7 +146,7 @@ function environment({ stored = null, rainAvailable = true, storageBlocked = fal
   if (observerSupported) window.IntersectionObserver = class { constructor(callback) { intersect=callback; } observe() {} };
   if (rainAvailable) window.AudioContext = FakeContext;
   const sandbox = vm.createContext({
-    document, window, URL, URLSearchParams, navigator:{}, Audio: FakeAudio, Date: FakeDate, performance: { now: () => now },
+    document, window, fetch:async () => ({ok:true,arrayBuffer:async () => new ArrayBuffer(4)}), URL, URLSearchParams, navigator:{}, Audio: FakeAudio, Date: FakeDate, performance: { now: () => now },
     localStorage: {
       getItem(key) { if (storageBlocked) throw new Error('Storage denied'); return store.get(key) ?? null; },
       setItem(key, value) { if (storageBlocked) throw new Error('Storage denied'); writes.push({ key, value }); store.set(key, value); }
@@ -154,7 +155,7 @@ function environment({ stored = null, rainAvailable = true, storageBlocked = fal
     clearTimeout(id) { timers.delete(id); }
   });
   for (const name of ['tracks.js', 'audio.js', 'analytics-config.js', 'analytics.js', 'app.js']) vm.runInContext(files[name], sandbox, { filename: name });
-  const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+  const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
   const element = id => {
     const result = document.getElementById(id); assert.ok(result, `Actual HTML element #${id} is required`); return result;
   };
@@ -220,8 +221,31 @@ async function test(name, run) {
 }
 
 (async () => {
+  await test('暂停时点歌曲立即播放，环境声独听时选曲也会开启音乐', async () => {
+    const env = environment();
+    await selectTrack(env, 'echo-public-night'); assertPlayer(env, true);
+    assert.equal(currentMedia(env).playCalls, 1);
+    await env.event('play', 'click'); assertPlayer(env, false);
+    await toggle(env, 'rain-toggle', true); assert.equal(currentMedia(env).paused, true);
+    await selectTrack(env, 'echo-public-dawn'); assertPlayer(env, true);
+    assert.equal(currentMedia(env).paused, false); assert.equal(env.element('music-toggle').checked, true);
+    assert.equal(env.element('rain-toggle').checked, true);
+  });
+  await test('四种环境声各自能独听，音量独立，全部关闭后暂停', async () => {
+    for (const kind of ['rain','fire','ocean','stream']) {
+      const env = environment(); await toggle(env, `${kind}-toggle`, true);
+      assertPlayer(env, true); assert.equal(currentMedia(env).playCalls, 0);
+      assert.equal(env.element('music-toggle').checked, false);
+      assert.equal(env.contexts[0].sources.filter(source => source.started && !source.stopped).length, 1);
+      await choose(env, `${kind}-volume`, '41', 'input'); assert.equal(env.preference()[`${kind}Volume`], .41);
+      const restored = environment({stored:JSON.stringify(env.preference())});
+      assert.equal(restored.element(`${kind}-toggle`).checked, true); assert.equal(Number(restored.element(`${kind}-volume`).value), 41);
+      assertPlayer(restored, false); assert.equal(restored.contexts.length, 0);
+      await toggle(env, `${kind}-toggle`, false); assertPlayer(env, false);
+    }
+  });
   await test('主动打开环境声立即发声，关闭音乐可独立听雨，恢复偏好不自动播放', async () => {
-    const env = environment(); await toggle(env, 'music-toggle', false);
+    const env = environment();
     await toggle(env, 'rain-toggle', true); assertPlayer(env, true);
     assert.equal(env.contexts.length, 1); assert.equal(env.contexts[0].state, 'running');
     assert.equal(env.contexts[0].sources.filter(source => source.started && !source.stopped).length, 1);
@@ -426,11 +450,11 @@ async function test(name, run) {
     assertPlayer(env, false); assert.equal(currentMedia(env).paused, true);
     assert.equal(String(env.element('sleep-timer').value), '0'); assert.match(env.element('play-status').textContent, /定时已结束/);
   });
-  await test('只保存11项白名单偏好，鼓励句、搜索及定时信息不进入localStorage', async () => {
+  await test('只保存15项白名单偏好，鼓励句、搜索及定时信息不进入localStorage', async () => {
     const env = environment();
     assert.equal(env.document.getElementById('thought'), null); await choose(env, 'search', 'private-search-987654', 'input');
     await choose(env, 'sleep-timer', '60'); await star(env, env.tracks[1].id);
-    assert.deepEqual(Object.keys(env.preference()).sort(), ['trackId','volume','music','rain','fire','rainVolume','fireVolume','mode','scope','favorites','disliked'].sort());
+    assert.deepEqual(Object.keys(env.preference()).sort(), ['trackId','volume','music','rain','fire','rainVolume','fireVolume','ocean','stream','oceanVolume','streamVolume','mode','scope','favorites','disliked'].sort());
     assert.equal(env.writes.every(write => write.key === preferenceKey && !write.value.includes('private-')), true);
     env.window.dispatch('pagehide'); await env.flush();
     assert.equal(env.document.getElementById('thought'), null); assert.equal(env.element('search').value, '');
@@ -468,7 +492,7 @@ async function test(name, run) {
     await env.event('open-credits', 'click'); assert.equal(env.element('credits-list').children.length, licensed.length);
   });
   await test('自然播放结束复用媒体进入下一首，主/迷你标题与选中行同步更新', async () => {
-    const env = environment(); await selectSeries(env, 'jazz'); await selectTrack(env, seriesIds(env, 'jazz')[0]); await env.event('play', 'click'); env.advance(1000);
+    const env = environment(); await selectSeries(env, 'jazz'); await selectTrack(env, seriesIds(env, 'jazz')[0]); env.advance(1000);
     const media = currentMedia(env), target = env.tracks[1];
     media.currentTime=media.duration; media.ended=true; media.paused=true; media.dispatch('pause'); media.dispatch('ended');
     await env.flush(); env.advance(1200);
@@ -499,7 +523,7 @@ async function test(name, run) {
     assertPlayer(env, true); assert.equal(currentMedia(env).paused, false); assert.equal(env.contexts.length, 0);
   });
   await test('切到后台保持音乐与环境声，离开页面停止声音', async () => {
-    const env = environment(); await toggle(env, 'fire-toggle', true); env.advance(1000);
+    const env = environment(); await env.event('play', 'click'); await toggle(env, 'fire-toggle', true); env.advance(1000);
     env.document.hidden=true; env.document.dispatch('visibilitychange'); await env.flush();
     assert.equal(currentMedia(env).paused, false); assertPlayer(env, true);
     env.window.dispatch('pagehide'); await env.flush();
@@ -520,7 +544,7 @@ async function test(name, run) {
   });
   await test('当前B歌标记后立即到原列表C歌，上一首跳过B，收藏与音频文件列表不被删除', async () => {
     const env = environment(), jazz = seriesIds(env, 'jazz'); await selectSeries(env, 'jazz'); await selectTrack(env, jazz[1]); await star(env, jazz[1]);
-    await env.event('play', 'click'); env.advance(1000); const old = currentMedia(env); await dislike(env, jazz[1]);
+    env.advance(1000); const old = currentMedia(env); await dislike(env, jazz[1]);
     assert.equal(selectedId(env), jazz[2]); assert.equal(old.paused, true); assertPlayer(env, true);
     assert.deepEqual(env.preference().favorites, [jazz[1]]); assert.deepEqual(env.preference().disliked, [jazz[1]]);
     assert.equal(env.element('track-list').children.length, env.tracks.length); await env.event('previous', 'click'); assert.equal(selectedId(env), jazz[0]);
@@ -534,13 +558,13 @@ async function test(name, run) {
   });
   await test('全部爵士被跳过仍可从其他系列打开爵士并看到恢复按钮，恢复不会在暂停时突然出声', async () => {
     const env = environment(), jazz = seriesIds(env, 'jazz'); await selectSeries(env, 'jazz'); await selectTrack(env, jazz[0]); for (const id of jazz) await dislike(env, id);
-    assertPlayer(env, false); assert.equal(env.audios.every(audio => !audio.playCalls), true); assert.match(env.element('play-status').textContent, /都已跳过/);
+    assertPlayer(env, false); assert.equal(env.audios.every(audio => audio.paused), true); assert.match(env.element('play-status').textContent, /都已跳过/);
     await selectSeries(env, 'calm'); await selectSeries(env, 'jazz'); assert.deepEqual(visibleIds(env), jazz);
     assert.match(env.element('play-status').textContent, /都已跳过/); await env.event('play','click'); assertPlayer(env, false);
     await env.event('play','click'); assertPlayer(env, false); await selectSeries(env,'calm'); await selectSeries(env,'jazz');
     // Explicitly keep a paused session before restoring; clicking Restore alone must not play.
     env.window.dispatch('pagehide'); await env.flush(); await dislike(env,jazz[1]); assertPlayer(env,false);
-    assert.equal(env.audios.every(audio => !audio.playCalls), true); await env.event('play','click'); assert.equal(selectedId(env),jazz[1]); assertPlayer(env,true);
+    assert.equal(env.audios.every(audio => audio.paused), true); await env.event('play','click'); assert.equal(selectedId(env),jazz[1]); assertPlayer(env,true);
   });
   await test('收藏歌被跳过仍显示在收藏中且不误播，恢复后重新进入队列', async () => {
     const env = environment(), target = env.tracks[1]; await star(env,target.id); await dislike(env,target.id); await choose(env,'play-scope','favorites');

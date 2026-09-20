@@ -4,6 +4,9 @@
 
   const unit = value => Math.max(0, Math.min(1, Number(value)));
 
+  const effectKinds = ['rain', 'fire', 'ocean', 'stream'];
+  const effectLabels = {rain:'轻雨', fire:'篝火', ocean:'海浪', stream:'流水'};
+
   class CalmAudio {
     constructor({ onState = () => {} } = {}) {
       this.onState = onState;
@@ -11,8 +14,12 @@
       this.music = true;
       this.rain = false;
       this.fire = false;
+      this.ocean = false;
+      this.stream = false;
       this.rainVolume = 0.25;
       this.fireVolume = 0.28;
+      this.oceanVolume = 0.3;
+      this.streamVolume = 0.3;
       this.mode = 'list';
       this.scope = 'series';
       this.favorites = [];
@@ -151,8 +158,8 @@
       return {
         playing: this.playing, volume: this.volume, music: this.music,
         trackId: this.trackId, trackTitle: this.currentTrack().title,
-        rain: this.rain, fire: this.fire,
-        rainVolume: this.rainVolume, fireVolume: this.fireVolume,
+        rain: this.rain, fire: this.fire, ocean: this.ocean, stream: this.stream,
+        rainVolume: this.rainVolume, fireVolume: this.fireVolume, oceanVolume: this.oceanVolume, streamVolume: this.streamVolume,
         mode: this.mode, scope: this.scope, favorites: [...this.favorites], disliked: [...this.disliked],
         queueLength: queue.length, queueIndex: queue.findIndex(track => track.id === this.trackId),
         sleepMinutes: this.sleepMinutes, sleepEndsAt: this.sleepEndsAt,
@@ -160,7 +167,9 @@
         duration: Number.isFinite(this.audio.duration) ? this.audio.duration : 0,
         currentTime: this.audio.currentTime || 0,
         rainAvailable: Boolean(window.AudioContext || window.webkitAudioContext),
-        fireAvailable: Boolean(window.AudioContext || window.webkitAudioContext)
+        fireAvailable: Boolean(window.AudioContext || window.webkitAudioContext),
+        oceanAvailable: Boolean(window.AudioContext || window.webkitAudioContext),
+        streamAvailable: Boolean(window.AudioContext || window.webkitAudioContext)
       };
     }
 
@@ -169,17 +178,12 @@
     refreshState(pending = false) {
       const musicPlaying = this.active && this.music && this.musicRunning && !this.audio.paused;
       const effectsReady = this.context && this.context.state === 'running';
-      const rainPlaying = this.active && this.rain && this.rainSource && effectsReady;
-      const firePlaying = this.active && this.fire && this.fireSource && effectsReady;
-      this.playing = Boolean(musicPlaying || rainPlaying || firePlaying);
-      const audible = [];
-      if (musicPlaying) audible.push('音乐');
-      if (rainPlaying) audible.push('轻雨');
-      if (firePlaying) audible.push('篝火');
-      const missing = [];
-      if (this.musicError) missing.push('音乐');
-      if (this.effectsError && this.rain && !rainPlaying) missing.push('轻雨');
-      if (this.effectsError && this.fire && !firePlaying) missing.push('篝火');
+      const playingEffects = effectKinds.filter(kind => this.active && this[kind] && this[`${kind}Source`] && effectsReady);
+      this.playing = Boolean(musicPlaying || playingEffects.length);
+      const audible = musicPlaying ? ['音乐'] : [];
+      audible.push(...playingEffects.map(kind => effectLabels[kind]));
+      const missing = this.musicError ? ['音乐'] : [];
+      if (this.effectsError) missing.push(...effectKinds.filter(kind => this[kind] && !playingEffects.includes(kind)).map(kind => effectLabels[kind]));
       if (this.playing) {
         this.status = 'playing';
         this.message = `${audible.join('与')}正在陪着你`;
@@ -271,7 +275,7 @@
 
     async start() {
       if (this.checkSleepTimer()) return false;
-      if (!this.music && !this.rain && !this.fire) {
+      if (!this.music && !this.hasEffects()) {
         this.pause();
         this.message = '选一种声音，或继续安静地工作';
         this.emit();
@@ -286,7 +290,7 @@
       const request = ++this.intent;
       const media = this.audio;
       const wantsMusic = this.music && queue.length > 0;
-      const wantsEffects = this.rain || this.fire;
+      const wantsEffects = this.hasEffects();
       if (wantsMusic) this.cancelFade(media);
       else this.stopMusic();
       if (!wantsMusic && !wantsEffects) {
@@ -317,8 +321,12 @@
           if (!current()) return;
           this.effects.gain.cancelScheduledValues(this.context.currentTime);
           this.effects.gain.setTargetAtTime(1, this.context.currentTime, 0.08);
-          if (this.rain) this.startEffect('rain');
-          if (this.fire) this.startEffect('fire');
+          await Promise.all(effectKinds.filter(kind => this[kind]).map(async kind => {
+            try {
+              await this.loadEffect(kind);
+              if (current() && this[kind]) this.startEffect(kind);
+            } catch (error) { if (current()) this.effectsError = error; }
+          }));
         } catch (error) {
           if (current()) this.effectsError = error;
         } finally { settle(); }
@@ -350,8 +358,7 @@
       this.playing = false;
       this.status = 'paused';
       this.message = '声音已暂停';
-      this.stopEffect('rain', immediate || document.hidden);
-      this.stopEffect('fire', immediate || document.hidden);
+      for (const kind of effectKinds) this.stopEffect(kind, immediate || document.hidden);
       if (this.effects) {
         this.effects.gain.cancelScheduledValues(this.context.currentTime);
         if (immediate || document.hidden) this.effects.gain.setValueAtTime(0, this.context.currentTime);
@@ -377,6 +384,8 @@
       this.emit();
     }
 
+    hasEffects() { return effectKinds.some(kind => this[kind]); }
+
     setRainVolume(value) { this.setEffectVolume('rain', value); }
     setFireVolume(value) { this.setEffectVolume('fire', value); }
     setEffectVolume(kind, value) {
@@ -396,7 +405,7 @@
       const active = this.active;
       this[kind] = Boolean(enabled);
       if (!this[kind]) this.stopEffect(kind, document.hidden);
-      if (!this.music && !this.rain && !this.fire) { this.pause(); return; }
+      if (!this.music && !this.hasEffects()) { this.pause(); return; }
       if (active) return this.start();
       this.emit();
     }
@@ -405,7 +414,7 @@
       const active = this.active;
       this.music = Boolean(enabled);
       if (!this.music) this.stopMusic();
-      if (!this.music && !this.rain && !this.fire) { this.pause(); return; }
+      if (!this.music && !this.hasEffects()) { this.pause(); return; }
       if (active) return this.start();
       this.emit();
     }
@@ -462,7 +471,7 @@
         }
         // A requested ambient source may still be waiting for context.resume().
         // Keep that original play intent even before its source node exists.
-        if (this.active && (this.rain || this.fire)) return this.start();
+        if (this.active && this.hasEffects()) return this.start();
         this.active = false;
         this.refreshState();
         return true;
@@ -529,7 +538,7 @@
       }
     }
 
-    selectTrack(id, scope) {
+    selectTrack(id, scope, autoplay = false) {
       const track = this.tracks.find(item => item.id === id);
       if (!track) return false;
       if (this.disliked.includes(id)) {
@@ -538,12 +547,13 @@
         this.emit();
         return false;
       }
+      if (autoplay) this.music = true;
       if (['series', 'all', 'favorites'].includes(scope)) this.scope = scope;
       // An explicit track choice takes precedence over a favorites-only queue.
       if (this.scope === 'favorites' && !this.favorites.includes(id)) this.scope = 'series';
       if (track.id !== this.trackId) this.replaceTrack(track, false);
       this.resetQueue();
-      if (this.active) return this.start();
+      if (autoplay || this.active) return this.start();
       this.message = `已选「${track.title}」，想听的时候再播放`;
       this.emit();
       return true;
@@ -654,44 +664,35 @@
     // The buffers are already quiet; a second attenuation made phone playback barely audible.
     effectVolume(kind) { return this[`${kind}Volume`]; }
 
+    async loadEffect(kind) {
+      if (this[`${kind}Buffer`]) return;
+      if (kind === 'rain') { this.effectBuffer(kind); return; }
+      const key = `${kind}Loading`;
+      if (!this[key]) this[key] = (async () => {
+        const response = await fetch(`assets/ambient/${kind}.m4a`);
+        if (!response.ok) throw new Error('环境声载入失败');
+        this[`${kind}Buffer`] = await this.context.decodeAudioData(await response.arrayBuffer());
+      })().finally(() => { this[key] = null; });
+      await this[key];
+    }
+
     effectBuffer(kind) {
-      const key = `${kind}Buffer`;
-      if (this[key]) return this[key];
+      if (this[`${kind}Buffer`]) return this[`${kind}Buffer`];
       const context = this.context;
-      const length = Math.floor(context.sampleRate * (kind === 'fire' ? 18 : 9));
+      const length = Math.floor(context.sampleRate * 9);
       const buffer = context.createBuffer(1, length, context.sampleRate);
       const data = buffer.getChannelData(0);
       let brown = 0;
       for (let i = 0; i < length; i++) {
-        const white = Math.random() * 2 - 1;
-        brown = (brown + white * 0.028) / 1.025;
-        data[i] = kind === 'rain' ? brown : brown * (0.8 + 0.16 * Math.sin(i / context.sampleRate * 0.71)) + white * 0.012;
-      }
-      if (kind === 'fire') {
-        // Small, rounded wood crackles; no sharp digital clicks or loud pops.
-        for (let at = 0.15; at < 17.7; at += 0.3 + Math.random() * 1.1) {
-          const start = Math.floor(at * context.sampleRate);
-          const duration = 0.045 + Math.random() * 0.065;
-          const count = Math.floor(duration * context.sampleRate);
-          const strength = 0.06 + Math.random() * 0.11;
-          let grain = 0;
-          for (let i = 0; i < count && start + i < length; i++) {
-            grain = grain * 0.45 + (Math.random() * 2 - 1) * 0.55;
-            const t = i / context.sampleRate;
-            const envelope = (1 - Math.exp(-t / 0.003)) * Math.exp(-t / 0.018) * (1 - i / count);
-            data[start + i] += grain * strength * envelope;
-          }
-        }
+        brown = (brown + (Math.random() * 2 - 1) * 0.028) / 1.025;
+        data[i] = brown;
       }
       const seam = Math.floor(context.sampleRate * 0.05);
       for (let i = 0; i < seam; i++) {
         const ratio = i / (seam - 1);
         data[length - seam + i] = data[length - seam + i] * (1 - ratio) + data[0] * ratio;
       }
-      let peak = 0;
-      for (const sample of data) peak = Math.max(peak, Math.abs(sample));
-      if (peak > 0.6) for (let i = 0; i < length; i++) data[i] *= 0.6 / peak;
-      this[key] = buffer;
+      this[`${kind}Buffer`] = buffer;
       return buffer;
     }
 
@@ -703,7 +704,7 @@
       source.loop = true;
       const filter = context.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.value = kind === 'rain' ? 1600 : 1900;
+      filter.frequency.value = kind === 'rain' ? 1600 : 19000;
       const gain = context.createGain();
       gain.gain.value = 0;
       source.connect(filter).connect(gain).connect(this.effects);

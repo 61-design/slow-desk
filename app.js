@@ -6,6 +6,8 @@
   const series = window.MUSIC_SERIES;
   const recommendations = series.flatMap(collection => (collection.recommendations || []).map(track => ({...track, series:collection.id})));
   const preferenceKey = 'slow-desk-library-v1';
+  const ambientKinds = ['rain','fire','ocean','stream'];
+  const ambientNames = {rain:'轻雨',fire:'篝火',ocean:'海浪',stream:'流水'};
   const modes = {list:'列表循环',shuffle:'随机播放',single:'单曲循环'};
   let browsedSeries = null, browsedScope = null;
   const rows = new Map();
@@ -48,7 +50,7 @@
       if (state.disliked.includes(track.id)) { audio.selectTrack(track.id); return; }
       if ($('search').value.trim()) { $('search').value = ''; browsedScope = 'series'; }
       browsedSeries = track.series;
-      audio.selectTrack(track.id, browsedScope || state.scope);
+      audio.selectTrack(track.id, browsedScope || state.scope, true);
     });
     const star = document.createElement('button'); star.type = 'button'; star.className = 'favorite-button'; star.textContent = '☆';
     star.addEventListener('click', () => {
@@ -129,7 +131,7 @@
   }
   function persist() {
     if (!ready) return;
-    const preferences = {trackId:state.trackId,volume:state.volume,music:state.music,rain:state.rain,fire:state.fire,rainVolume:state.rainVolume,fireVolume:state.fireVolume,mode:state.mode,scope:state.scope,favorites:state.favorites,disliked:state.disliked};
+    const preferences = {trackId:state.trackId,volume:state.volume,music:state.music,rain:state.rain,fire:state.fire,rainVolume:state.rainVolume,fireVolume:state.fireVolume,ocean:state.ocean,stream:state.stream,oceanVolume:state.oceanVolume,streamVolume:state.streamVolume,mode:state.mode,scope:state.scope,favorites:state.favorites,disliked:state.disliked};
     try { localStorage.setItem(preferenceKey, JSON.stringify(preferences)); } catch (_) {}
   }
   function render(next) {
@@ -147,20 +149,22 @@
     $('current-series').textContent = collection.title;
     $('current-title').textContent = track.title;
     if (ready && analytics) analytics.bind(audio.audio, track, () => audio.active && audio.music && audio.volume > 0);
-    slider('volume',state.volume); slider('rain-volume',state.rainVolume); slider('fire-volume',state.fireVolume);
-    $('music-toggle').checked = state.music; $('rain-toggle').checked = state.rain; $('fire-toggle').checked = state.fire;
-    $('rain-toggle').disabled = !state.rainAvailable; $('rain-volume').disabled = !state.rainAvailable;
-    $('fire-toggle').disabled = !state.fireAvailable; $('fire-volume').disabled = !state.fireAvailable;
-    $('rain-toggle').closest('label').title = state.rainAvailable ? '' : '此浏览器不支持环境声，音乐仍可使用';
-    $('fire-toggle').closest('label').title = state.fireAvailable ? '' : '此浏览器不支持环境声，音乐仍可使用';
-    const ambience = [state.rain ? '轻雨' : '',state.fire ? '篝火' : ''].filter(Boolean).join(' + ');
-    $('ambient-summary').textContent = ambience ? `${ambience}已选${active ? '' : ' · 暂停中'}` : '轻雨 / 篝火，可独立混合';
+    slider('volume',state.volume);
+    $('music-toggle').checked = state.music;
+    for (const kind of ambientKinds) {
+      slider(`${kind}-volume`,state[`${kind}Volume`]);
+      $(`${kind}-toggle`).checked = state[kind];
+      $(`${kind}-toggle`).disabled = $(`${kind}-volume`).disabled = !state[`${kind}Available`];
+      $(`${kind}-toggle`).closest('label').title = state[`${kind}Available`] ? '' : '此浏览器不支持环境声，音乐仍可使用';
+    }
+    const ambience = ambientKinds.filter(kind => state[kind]).map(kind => ambientNames[kind]).join(' + ');
+    $('ambient-summary').textContent = ambience ? `${ambience}已选${active ? '' : ' · 暂停中'}` : '轻雨 / 篝火 / 海浪 / 流水';
     $('play-mode').value = state.mode; $('play-scope').value = state.scope;
     $('mini-title').textContent = state.music ? track.title : ambience || '一会儿安静';
     $('mini-status').textContent = `${state.playing ? '正在播放' : state.status === 'loading' ? '声音准备中' : '已暂停'} · ${modes[state.mode]}`;
     $('mini-mode').textContent = {list:'列表',single:'单曲',shuffle:'随机'}[state.mode];
     $('mini-mode').setAttribute('aria-label', `切换播放方式，当前${modes[state.mode]}`);
-    const allMuted = (!state.music || state.volume === 0) && (!state.rain || state.rainVolume === 0) && (!state.fire || state.fireVolume === 0);
+    const allMuted = (!state.music || state.volume === 0) && ambientKinds.every(kind => !state[kind] || state[`${kind}Volume`] === 0);
     $('play-status').textContent = state.playing && allMuted ? '当前声音音量为零，调高一点就能听见' : state.status === 'off' ? '点一下播放，再去做手边的事' : state.message;
     $('play-status').dataset.error = String(state.status === 'error');
     $('now-track').textContent = `当前选择 · ${track.title}`;
@@ -179,10 +183,12 @@
   if (Array.isArray(saved.disliked)) audio.setDisliked(saved.disliked);
   if (['single','list','shuffle'].includes(saved.mode)) audio.setMode(saved.mode);
   if (['series','all','favorites'].includes(saved.scope)) audio.setScope(saved.scope);
-  [['volume','setVolume'],['rainVolume','setRainVolume'],['fireVolume','setFireVolume']].forEach(([key,method]) => { if (typeof saved[key] === 'number' && Number.isFinite(saved[key])) audio[method](saved[key]); });
+  if (typeof saved.volume === 'number' && Number.isFinite(saved.volume)) audio.setVolume(saved.volume);
   if (typeof saved.music === 'boolean') audio.setMusic(saved.music);
-  if (saved.rain === true && audio.getState().rainAvailable) audio.setRain(true);
-  if (saved.fire === true && audio.getState().fireAvailable) audio.setFire(true);
+  for (const kind of ambientKinds) {
+    if (typeof saved[`${kind}Volume`] === 'number') audio.setEffectVolume(kind, saved[`${kind}Volume`]);
+    if (saved[kind] === true && audio.getState()[`${kind}Available`]) audio.setEffect(kind, true);
+  }
   if (sharedTrack) {
     audio.setScope('series');
     audio.selectTrack(sharedTrack.id);
@@ -219,14 +225,21 @@
   $('play-mode').addEventListener('change',event => audio.setMode(event.target.value));
   $('mini-mode').addEventListener('click',() => { const order=['list','shuffle','single']; audio.setMode(order[(order.indexOf(state.mode)+1)%order.length]); });
   $('play-scope').addEventListener('change',event => { $('search').value=''; browsedScope=event.target.value; browsedSeries=null; audio.setScope(event.target.value); });
-  [['volume','setVolume'],['rain-volume','setRainVolume'],['fire-volume','setFireVolume']].forEach(([id,method]) => $(id).addEventListener('input',event => audio[method](Number(event.target.value)/100)));
-  $('music-toggle').addEventListener('change', event => audio.setMusic(event.target.checked));
-  [['rain-toggle','setRain'],['fire-toggle','setFire']].forEach(([id,method]) => $(id).addEventListener('change', event => {
-    const enabled = event.target.checked;
-    audio[method](enabled);
-    // A direct switch gesture starts the selected mix. Restoring saved preferences stays silent.
-    if (enabled && !audio.active) audio.start();
-  }));
+  $('volume').addEventListener('input',event => audio.setVolume(Number(event.target.value)/100));
+  $('music-toggle').addEventListener('change', event => {
+    audio.setMusic(event.target.checked);
+    if (event.target.checked && !audio.active) audio.start();
+  });
+  for (const kind of ambientKinds) {
+    $(`${kind}-volume`).addEventListener('input', event => audio.setEffectVolume(kind, Number(event.target.value)/100));
+    $(`${kind}-toggle`).addEventListener('change', event => {
+      const enabled = event.target.checked;
+      // Starting an ambience from silence never starts an unrequested song.
+      if (enabled && !audio.active) audio.setMusic(false);
+      audio.setEffect(kind, enabled);
+      if (enabled && !audio.active) audio.start();
+    });
+  }
   $('sleep-timer').addEventListener('change',event => audio.setSleepTimer(Number(event.target.value)));
   $('search').addEventListener('input',renderLibrary);
   $('clear-search').addEventListener('click',() => { $('search').value=''; renderLibrary(); $('search').focus(); });

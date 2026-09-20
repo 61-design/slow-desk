@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://61-design.github.io/slow-desk/assets/desk.png">
   <meta property="og:url" content="https://61-design.github.io/slow-desk/">
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="style.css?v=20260920-ambient">
+  <link rel="stylesheet" href="style.css?v=20260920-nature">
 </head>
 <body>
   <svg class="icon-defs" aria-hidden="true"><defs>
@@ -43,7 +43,7 @@
       <p class="play-status" id="play-status" role="status">点一下播放，再去做手边的事</p>
       <button id="share-track" class="share-track">分享这首歌 ↗</button>
       </div>
-      <section class="ambient-panel" aria-labelledby="ambient-heading"><div class="ambient-heading"><h2 id="ambient-heading">给音乐加一点环境声</h2><span id="ambient-summary">轻雨 / 篝火，可独立混合</span></div><div class="ambient-controls"><div class="ambient-source"><label class="switch-label"><span class="source-title">窗外轻雨</span><input type="checkbox" id="rain-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="rain-volume" type="range" min="0" max="100" value="25" aria-label="轻雨音量"><output id="rain-volume-value" for="rain-volume">25%</output></div></div><div class="ambient-source"><label class="switch-label"><span class="source-title">壁炉篝火</span><input type="checkbox" id="fire-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="fire-volume" type="range" min="0" max="100" value="28" aria-label="篝火音量"><output id="fire-volume-value" for="fire-volume">28%</output></div></div></div><p class="ambient-tip">打开开关即可播放；关闭“音乐”可只听环境声。</p></section>
+      <section class="ambient-panel" aria-labelledby="ambient-heading"><div class="ambient-heading"><h2 id="ambient-heading">听一点自然的声音</h2><span id="ambient-summary">轻雨 / 篝火 / 海浪 / 流水</span></div><div class="ambient-controls"><div class="ambient-source"><label class="switch-label"><span class="source-title">窗外轻雨</span><input type="checkbox" id="rain-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="rain-volume" type="range" min="0" max="100" value="25" aria-label="轻雨音量"><output id="rain-volume-value" for="rain-volume">25%</output></div></div><div class="ambient-source"><label class="switch-label"><span class="source-title">壁炉篝火</span><input type="checkbox" id="fire-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="fire-volume" type="range" min="0" max="100" value="28" aria-label="篝火音量"><output id="fire-volume-value" for="fire-volume">28%</output></div></div><div class="ambient-source"><label class="switch-label"><span class="source-title">海边浪潮</span><input type="checkbox" id="ocean-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="ocean-volume" type="range" min="0" max="100" value="30" aria-label="海边浪潮音量"><output id="ocean-volume-value" for="ocean-volume">30%</output></div></div><div class="ambient-source"><label class="switch-label"><span class="source-title">潺潺溪流</span><input type="checkbox" id="stream-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="stream-volume" type="range" min="0" max="100" value="30" aria-label="潺潺溪流音量"><output id="stream-volume-value" for="stream-volume">30%</output></div></div></div><p class="ambient-tip">每种声音都能单独听；播放音乐时，也可以叠加。</p></section>
       <details class="sound-settings" open><summary>播放设置</summary>
       <div class="play-options"><label>播放方式<select id="play-mode" aria-label="播放方式"><option value="list">列表循环</option><option value="shuffle">随机播放</option><option value="single">单曲循环</option></select></label><label>播放范围<select id="play-scope" aria-label="播放范围"><option value="series">歌曲所在系列</option><option value="all">全部音乐</option><option value="favorites">我的收藏</option></select></label></div>
       <div class="volume-control music-volume"><label class="switch-label"><span class="source-title">音乐</span><input type="checkbox" id="music-toggle" checked><span class="switch" aria-hidden="true"></span></label><input id="volume" type="range" min="0" max="100" value="38" aria-label="音乐音量"><output id="volume-value" for="volume">38%</output></div>
@@ -84,14 +84,14 @@
     <div class="share-actions"><a id="save-share-card" class="card-save" hidden>保存卡片</a><button id="send-share-card" hidden>分享卡片</button><button id="copy-share-link">复制链接</button></div>
     <input id="share-url" class="share-url" aria-label="复制分享链接" readonly hidden>
   </dialog>
-  <dialog id="credits-dialog" aria-labelledby="credits-heading"><div class="credits-header"><h2 id="credits-heading">曲目来源与使用许可</h2><button id="close-credits" aria-label="关闭曲目来源">×</button></div><p>收录曲目按各曲目所列许可署名。部分音频由MP3转AAC，部分保留原MP3；播放时做音量平衡，没有裁剪或重新编排。环境声独立合成，并非原曲的一部分；作者不因此为本应用背书。</p><p>原来的十首配乐保留，属于本项目此前制作的合成配乐。</p><div id="credits-list"></div></dialog>
+  <dialog id="credits-dialog" aria-labelledby="credits-heading"><div class="credits-header"><h2 id="credits-heading">曲目来源与使用许可</h2><button id="close-credits" aria-label="关闭曲目来源">×</button></div><p>收录曲目按各曲目所列许可署名。部分音频由MP3转AAC，部分保留原MP3；播放时做音量平衡，没有裁剪或重新编排。轻雨为合成声；篝火、海浪和流水来自独立实地录音，并非原曲的一部分；作者不因此为本应用背书。</p><p>原来的十首配乐保留，属于本项目此前制作的合成配乐。</p><div id="credits-list"></div><article><h3>自然环境声</h3><p>篝火：samarobryn · Crackling Fire（CC0）；海浪：kapilkant · Soft ocean waves sounds（CC0）；流水：Geoff Bremner · Gentle Relaxing Stream 1（CC BY 4.0）。已截取、调整音量并处理循环接缝。</p><p><a href="https://freesound.org/people/samarobryn/sounds/414767/" target="_blank" rel="noopener noreferrer">篝火来源</a> · <a href="https://freesound.org/people/kapilkant/sounds/549334/" target="_blank" rel="noopener noreferrer">海浪来源</a> · <a href="https://freesound.org/people/Geoff-Bremner-Audio/sounds/697495/" target="_blank" rel="noopener noreferrer">流水来源</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0 许可</a></p></article></dialog>
   <noscript><p class="noscript">请允许浏览器运行 JavaScript，才能使用选曲与播放功能。</p></noscript>
   <script src="tracks.js"></script>
-  <script src="audio.js?v=20260920-ambient"></script>
+  <script src="audio.js?v=20260920-nature"></script>
   <script src="analytics-config.js"></script>
   <script src="analytics.js"></script>
   <script src="assets/vendor/qrcode.js"></script>
   <script src="share-card.js"></script>
-  <script src="app.js?v=20260920-ambient"></script>
+  <script src="app.js?v=20260920-nature"></script>
 </body>
 </html>
