@@ -7,7 +7,7 @@
   const recommendations = series.flatMap(collection => (collection.recommendations || []).map(track => ({...track, series:collection.id})));
   const preferenceKey = 'slow-desk-library-v1';
   const modes = {list:'列表循环',shuffle:'随机播放',single:'单曲循环'};
-  const lastTrackBySeries = {};
+  let browsedSeries = null, browsedScope = null;
   const rows = new Map();
   const relatedRows = new Map();
   let ready = false, immersed = false, audio, state, saved = {};
@@ -26,7 +26,8 @@
     button.setAttribute('aria-pressed', 'false');
     button.addEventListener('click', () => {
       $('search').value = '';
-      audio.selectSeries(collection.id, lastTrackBySeries[collection.id]);
+      browsedSeries = collection.id; browsedScope = 'series';
+      renderLibrary();
     });
     $('series-list').appendChild(button);
   });
@@ -45,8 +46,9 @@
     button.append(content, time);
     button.addEventListener('click', () => {
       if (state.disliked.includes(track.id)) { audio.selectTrack(track.id); return; }
-      if ($('search').value.trim()) { $('search').value = ''; audio.setScope('series'); }
-      audio.selectTrack(track.id);
+      if ($('search').value.trim()) { $('search').value = ''; browsedScope = 'series'; }
+      browsedSeries = track.series;
+      audio.selectTrack(track.id, browsedScope || state.scope);
     });
     const star = document.createElement('button'); star.type = 'button'; star.className = 'favorite-button'; star.textContent = '☆';
     star.addEventListener('click', () => {
@@ -79,14 +81,15 @@
 
   function renderLibrary() {
     const selected = tracks.find(track => track.id === state.trackId);
-    const collection = series.find(item => item.id === selected.series);
+    const collection = series.find(item => item.id === (browsedSeries || selected.series));
+    const viewScope = browsedScope || state.scope;
     const favorites = new Set(state.favorites);
     const disliked = new Set(state.disliked);
     const query = $('search').value.trim().toLocaleLowerCase();
-    const inScope = track => state.scope === 'all' || (state.scope === 'favorites' ? favorites.has(track.id) : track.series === collection.id);
+    const inScope = track => viewScope === 'all' || (viewScope === 'favorites' ? favorites.has(track.id) : track.series === collection.id);
     const matching = track => `${track.title} ${track.artist || ''} ${track.subtitle || ''}`.toLocaleLowerCase().includes(query);
     const visible = tracks.filter(track => query ? matching(track) : inScope(track));
-    const related = recommendations.filter(track => query ? matching(track) : state.scope === 'all' || (state.scope === 'series' && track.series === collection.id));
+    const related = recommendations.filter(track => query ? matching(track) : viewScope === 'all' || (viewScope === 'series' && track.series === collection.id));
     const relatedIds = new Set(related.map(track => track.id));
     for (const [id, row] of relatedRows) row.hidden = !relatedIds.has(id);
     $('related-music').hidden = related.length === 0;
@@ -94,9 +97,9 @@
     if (query && related.length) $('related-music').open = true;
     const shown = new Set(visible.map(track => track.id));
     document.body.dataset.series = collection.id;
-    document.querySelectorAll('.series-button').forEach(button => button.setAttribute('aria-pressed', String(!query && state.scope === 'series' && button.dataset.series === collection.id)));
+    document.querySelectorAll('.series-button').forEach(button => button.setAttribute('aria-pressed', String(!query && viewScope === 'series' && button.dataset.series === collection.id)));
     $('series-description').textContent = query ? '搜索全曲库；点选结果后进入它所在的系列。' : collection.description;
-    $('library-title').textContent = query ? '搜索结果' : state.scope === 'favorites' ? '我的收藏' : state.scope === 'all' ? '全部音乐' : collection.title;
+    $('library-title').textContent = query ? '搜索结果' : viewScope === 'favorites' ? '我的收藏' : viewScope === 'all' ? '全部音乐' : collection.title;
     const skippedCount = visible.filter(track => disliked.has(track.id)).length;
     $('track-count').textContent = `${visible.length} 首${skippedCount ? ' · 跳过 ' + skippedCount : ''}${query ? '' : ' · ' + modes[state.mode]}`;
     $('clear-search').hidden = !query;
@@ -133,7 +136,6 @@
     state = next;
     const track = tracks.find(item => item.id === state.trackId);
     const collection = series.find(item => item.id === track.series);
-    lastTrackBySeries[collection.id] = state.trackId;
     renderLibrary();
     const active = state.playing || state.status === 'loading';
     ['play','mini-play'].forEach(id => {
@@ -216,43 +218,42 @@
   ['next','mini-next'].forEach(id => $(id).addEventListener('click',() => audio.nextTrack()));
   $('play-mode').addEventListener('change',event => audio.setMode(event.target.value));
   $('mini-mode').addEventListener('click',() => { const order=['list','shuffle','single']; audio.setMode(order[(order.indexOf(state.mode)+1)%order.length]); });
-  $('play-scope').addEventListener('change',event => { $('search').value=''; audio.setScope(event.target.value); });
+  $('play-scope').addEventListener('change',event => { $('search').value=''; browsedScope=event.target.value; browsedSeries=null; audio.setScope(event.target.value); });
   [['volume','setVolume'],['rain-volume','setRainVolume'],['fire-volume','setFireVolume']].forEach(([id,method]) => $(id).addEventListener('input',event => audio[method](Number(event.target.value)/100)));
   [['music-toggle','setMusic'],['rain-toggle','setRain'],['fire-toggle','setFire']].forEach(([id,method]) => $(id).addEventListener('change',event => audio[method](event.target.checked)));
   $('sleep-timer').addEventListener('change',event => audio.setSleepTimer(Number(event.target.value)));
   $('search').addEventListener('input',renderLibrary);
   $('clear-search').addEventListener('click',() => { $('search').value=''; renderLibrary(); $('search').focus(); });
   $('immersion').addEventListener('click',() => setImmersed(!immersed));
-  $('thought').addEventListener('input',() => { $('clear-thought').hidden=!$('thought').value; });
-  $('clear-thought').addEventListener('click',() => { $('thought').value=''; $('clear-thought').hidden=true; $('thought').focus(); });
-  window.addEventListener('pagehide',() => { $('thought').value=''; $('clear-thought').hidden=true; $('search').value=''; });
+  const encouragements = [
+    '把心放在眼前这一件小事上。', '不必一下做完，先走好这一小步。',
+    '今天的进度，可以按自己的节奏来。', '留一点耐心，给正在努力的自己。',
+    '让音乐陪着你，慢慢来。', '专注一会儿，也记得歇一会儿。',
+    '一页书，一段音乐，都算好时光。', '此刻只做一件事，就很好。',
+    '暂时没有答案也没关系，先从能做的开始。', '小小的进展，也值得被看见。',
+    '给自己一点空间，思路会慢慢清晰。', '休息不用理由，放松也是今天的一部分。',
+    '不用赶上谁，照着自己的步子走。', '窗外有风，手边有事，慢慢就好。',
+    '把难题拆小一点，把呼吸放慢一点。', '愿这首歌，陪你度过舒服的一段时间。'
+  ];
+  let quoteIndex = -1;
+  function nextEncouragement() {
+    const step = 1 + Math.floor(Math.random() * (encouragements.length - 1));
+    quoteIndex = (quoteIndex + step) % encouragements.length;
+    $('encouragement').textContent = encouragements[quoteIndex];
+  }
+  nextEncouragement();
+  $('next-encouragement').addEventListener('click', nextEncouragement);
+  window.addEventListener('pagehide',() => { $('search').value=''; });
   document.addEventListener('keydown',event => {
     if (event.key === 'Escape' && immersed) setImmersed(false);
-    if (event.code !== 'Space' || event.altKey || event.ctrlKey || event.metaKey || event.repeat || $('credits-dialog').open) return;
+    if (event.code !== 'Space' || event.altKey || event.ctrlKey || event.metaKey || event.repeat || $('credits-dialog').open || $('share-dialog').open) return;
     if (event.target.closest('input,textarea,select,button,a,summary,[contenteditable="true"]')) return;
     event.preventDefault(); togglePlayback();
   });
-  $('share-track').addEventListener('click', async () => {
+  $('share-track').addEventListener('click', () => {
     const track = tracks.find(item => item.id === state.trackId);
-    const url = new URL('https://61-design.github.io/slow-desk/');
-    url.searchParams.set('track', track.id);
-    url.searchParams.set('from', 'share');
-    $('share-status').textContent = '';
-    $('share-url').hidden = true;
-    try {
-      if (navigator.share) {
-        await navigator.share({title:`慢慢书桌 · ${track.title}`, text:'留一点安静，听一首喜欢的歌。', url:url.href});
-        $('share-status').textContent = '已完成分享操作';
-      } else if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(url.href);
-        $('share-status').textContent = '链接已复制，发给朋友就能找到这首歌';
-      } else throw new Error('Manual copy');
-    } catch (error) {
-      if (error.name === 'AbortError') return;
-      $('share-url').value = url.href; $('share-url').hidden = false;
-      $('share-url').focus(); $('share-url').select();
-      $('share-status').textContent = '长按或复制上方链接，发给朋友';
-    }
+    const collection = series.find(item => item.id === track.series);
+    window.SlowDeskShare.open(track, collection);
   });
   let creditsBuilt=false;
   $('open-credits').addEventListener('click',() => {

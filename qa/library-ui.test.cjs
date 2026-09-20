@@ -220,6 +220,32 @@ async function test(name, run) {
 }
 
 (async () => {
+  await test('播放中浏览其他系列不换曲、不重启媒体、不更改队列与偏好', async () => {
+    const env = environment(); await env.event('play', 'click'); env.advance(1000);
+    const media = currentMedia(env), count = media.playCalls, saved = env.store.get(preferenceKey);
+    for (const id of ['jazz', 'calm', 'lofi']) {
+      await selectSeries(env, id); assert.equal(currentMedia(env), media); assert.equal(media.playCalls, count);
+      assert.equal(selectedId(env), 'echo-public-night'); assert.deepEqual(visibleIds(env), seriesIds(env, id));
+      assert.equal(env.store.get(preferenceKey), saved); assertPlayer(env, true);
+    }
+    await env.event('next','click'); assert.equal(selectedId(env), 'echo-public-dawn');
+    assert.deepEqual(visibleIds(env), seriesIds(env, 'lofi'));
+    await selectTrack(env, seriesIds(env, 'lofi')[0]); assert.equal(selectedId(env), seriesIds(env, 'lofi')[0]);
+    await env.event('next','click'); assert.equal(selectedId(env), seriesIds(env, 'lofi')[1]);
+  });
+  await test('暂停浏览系列不改歌曲，鼓励句可切换且不写入存储，沉浸时也可用', async () => {
+    const env = environment(), before = env.writes.length;
+    await selectSeries(env, 'acoustic'); assert.equal(selectedId(env), 'echo-public-night');
+    assert.equal(env.writes.length, before); assert.equal(env.audios.every(audio => !audio.playCalls), true);
+    assert.equal(env.document.getElementById('thought'), null);
+    let text = env.element('encouragement').textContent;
+    for (let i = 0; i < 20; i++) {
+      await env.event('next-encouragement','click'); assert.notEqual(env.element('encouragement').textContent, text);
+      text = env.element('encouragement').textContent;
+    }
+    await env.event('immersion','click'); await env.event('next-encouragement','click');
+    assert.notEqual(env.element('encouragement').textContent, text); assert.equal(env.writes.length, before);
+  });
   await test('手机主按钮可见时隐藏重复播放条，下滑后出现，回到首屏后隐藏', async () => {
     const env=environment({mobile:true,observerSupported:true});
     env.primaryVisible(true); assert.equal(env.element('mini-player').hidden,true);
@@ -340,7 +366,7 @@ async function test(name, run) {
     }
   });
   await test('当前系列与全部范围的首尾循环边界正确', async () => {
-    const env = environment(); await selectSeries(env, 'jazz'); const jazz = seriesIds(env, 'jazz');
+    const env = environment(); await selectSeries(env, 'jazz'); const jazz = seriesIds(env, 'jazz'); await selectTrack(env, jazz[0]);
     await env.event('previous', 'click'); assert.equal(selectedId(env), jazz.at(-1));
     await env.event('next', 'click'); assert.equal(selectedId(env), jazz[0]);
     await choose(env, 'play-scope', 'all'); assert.equal(visibleIds(env).length, env.tracks.length);
@@ -349,7 +375,7 @@ async function test(name, run) {
     await choose(env, 'play-scope', 'series'); assert.deepEqual(visibleIds(env), jazz);
   });
   await test('随机播放在本轮内不重复并可返回真正上一首', async () => {
-    const env = environment(); await selectSeries(env, 'jazz'); await choose(env, 'play-mode', 'shuffle');
+    const env = environment(); await selectSeries(env, 'jazz'); await selectTrack(env, seriesIds(env, 'jazz')[0]); await choose(env, 'play-mode', 'shuffle');
     const seen = [selectedId(env)], count = seriesIds(env, 'jazz').length;
     for (let i=1; i<count; i++) { await env.event('next', 'click'); seen.push(selectedId(env)); }
     assert.equal(new Set(seen).size, count);
@@ -386,14 +412,14 @@ async function test(name, run) {
     assertPlayer(env, false); assert.equal(currentMedia(env).paused, true);
     assert.equal(String(env.element('sleep-timer').value), '0'); assert.match(env.element('play-status').textContent, /定时已结束/);
   });
-  await test('只保存11项白名单偏好，思路、搜索及定时信息不进入localStorage', async () => {
+  await test('只保存11项白名单偏好，鼓励句、搜索及定时信息不进入localStorage', async () => {
     const env = environment();
-    await choose(env, 'thought', 'private-work-note-123456', 'input'); await choose(env, 'search', 'private-search-987654', 'input');
+    assert.equal(env.document.getElementById('thought'), null); await choose(env, 'search', 'private-search-987654', 'input');
     await choose(env, 'sleep-timer', '60'); await star(env, env.tracks[1].id);
     assert.deepEqual(Object.keys(env.preference()).sort(), ['trackId','volume','music','rain','fire','rainVolume','fireVolume','mode','scope','favorites','disliked'].sort());
     assert.equal(env.writes.every(write => write.key === preferenceKey && !write.value.includes('private-')), true);
     env.window.dispatch('pagehide'); await env.flush();
-    assert.equal(env.element('thought').value, ''); assert.equal(env.element('search').value, '');
+    assert.equal(env.document.getElementById('thought'), null); assert.equal(env.element('search').value, '');
   });
   await test('刷新恢复曲目、收藏、播放方式及音量但不恢复定时或自动响', async () => {
     const first = environment(); const target = first.tracks.find(track => track.series === 'calm');
@@ -428,7 +454,7 @@ async function test(name, run) {
     await env.event('open-credits', 'click'); assert.equal(env.element('credits-list').children.length, licensed.length);
   });
   await test('自然播放结束复用媒体进入下一首，主/迷你标题与选中行同步更新', async () => {
-    const env = environment(); await selectSeries(env, 'jazz'); await env.event('play', 'click'); env.advance(1000);
+    const env = environment(); await selectSeries(env, 'jazz'); await selectTrack(env, seriesIds(env, 'jazz')[0]); await env.event('play', 'click'); env.advance(1000);
     const media = currentMedia(env), target = env.tracks[1];
     media.currentTime=media.duration; media.ended=true; media.paused=true; media.dispatch('pause'); media.dispatch('ended');
     await env.flush(); env.advance(1200);
@@ -438,7 +464,7 @@ async function test(name, run) {
   });
   await test('输入框、下拉框、按钮、summary及许可弹窗不会被全局空格劫持', async () => {
     const env = environment();
-    for (const id of ['thought','search','volume','play-mode','play-scope','sleep-timer','mini-mode']) {
+    for (const id of ['next-encouragement','search','volume','play-mode','play-scope','sleep-timer','mini-mode']) {
       const event = await env.key({key:' ',code:'Space',target:env.element(id)});
       assert.notEqual(event.defaultPrevented, true); assertPlayer(env, false);
     }
@@ -458,13 +484,12 @@ async function test(name, run) {
     await selectSeries(env, 'acoustic'); await env.event('play', 'click'); env.advance(1000);
     assertPlayer(env, true); assert.equal(currentMedia(env).paused, false); assert.equal(env.contexts.length, 0);
   });
-  await test('切到后台保持音乐与环境声，离开页面停止声音且清空瞬时内容', async () => {
+  await test('切到后台保持音乐与环境声，离开页面停止声音', async () => {
     const env = environment(); await toggle(env, 'fire-toggle', true); await env.event('play', 'click'); env.advance(1000);
-    await choose(env, 'thought', 'session-only', 'input');
     env.document.hidden=true; env.document.dispatch('visibilitychange'); await env.flush();
     assert.equal(currentMedia(env).paused, false); assertPlayer(env, true);
     env.window.dispatch('pagehide'); await env.flush();
-    assert.equal(currentMedia(env).paused, true); assertPlayer(env, false); assert.equal(env.element('thought').value, '');
+    assert.equal(currentMedia(env).paused, true); assertPlayer(env, false);
     assert.equal(env.contexts[0].sources.every(source => source.stopped), true);
   });
 
@@ -494,7 +519,7 @@ async function test(name, run) {
     await dislike(env, target.id); await selectTrack(env, target.id); assert.equal(selectedId(env), target.id); assert.equal(env.element('search').value, '');
   });
   await test('全部爵士被跳过仍可从其他系列打开爵士并看到恢复按钮，恢复不会在暂停时突然出声', async () => {
-    const env = environment(), jazz = seriesIds(env, 'jazz'); await selectSeries(env, 'jazz'); for (const id of jazz) await dislike(env, id);
+    const env = environment(), jazz = seriesIds(env, 'jazz'); await selectSeries(env, 'jazz'); await selectTrack(env, jazz[0]); for (const id of jazz) await dislike(env, id);
     assertPlayer(env, false); assert.equal(env.audios.every(audio => !audio.playCalls), true); assert.match(env.element('play-status').textContent, /都已跳过/);
     await selectSeries(env, 'calm'); await selectSeries(env, 'jazz'); assert.deepEqual(visibleIds(env), jazz);
     assert.match(env.element('play-status').textContent, /都已跳过/); await env.event('play','click'); assertPlayer(env, false);
@@ -546,7 +571,7 @@ async function test(name, run) {
     const shown = env.element('related-list').children.filter(link => !link.hidden);
     assert.equal(shown.length, 1); assert.equal(shown[0].href, 'https://music.apple.com/us/song/1721843001');
     assert.equal(shown[0].target, '_blank'); assert.equal(shown[0].rel, 'noopener noreferrer');
-    assert.equal(selectedId(env), env.tracks[0].id); assert.equal(env.audios.every(audio => audio.playCalls === 0), true);
+    assert.equal(selectedId(env), 'echo-public-night'); assert.equal(env.audios.every(audio => audio.playCalls === 0), true);
     await env.event('clear-search', 'click'); assert.equal(env.element('related-music').hidden, true);
     await selectSeries(env, 'midnight'); await choose(env, 'play-scope', 'favorites');
     assert.equal(env.element('related-music').hidden, true);

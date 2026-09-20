@@ -529,7 +529,7 @@
       }
     }
 
-    selectTrack(id) {
+    selectTrack(id, scope) {
       const track = this.tracks.find(item => item.id === id);
       if (!track) return false;
       if (this.disliked.includes(id)) {
@@ -538,6 +538,7 @@
         this.emit();
         return false;
       }
+      if (['series', 'all', 'favorites'].includes(scope)) this.scope = scope;
       // An explicit track choice takes precedence over a favorites-only queue.
       if (this.scope === 'favorites' && !this.favorites.includes(id)) this.scope = 'series';
       if (track.id !== this.trackId) this.replaceTrack(track, false);
