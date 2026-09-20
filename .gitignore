@@ -1,0 +1,18 @@
+# Publish only the website, music sources, documentation and portable tests.
+*
+!.gitignore
+!.nojekyll
+!README.md
+!index.html
+!app.js
+!audio.js
+!tracks.js
+!style.css
+!曲目来源与许可.md
+!assets/
+!assets/**
+!qa/
+!qa/library-ui.test.cjs
+!qa/player-upgrade.test.cjs
+.DS_Store
+
