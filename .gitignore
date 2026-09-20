@@ -21,3 +21,27 @@
 !统计接入说明.md
 .DS_Store
 
+
+# Publish collector source, never deployment state or administrator credentials.
+!collector/
+!collector/worker.mjs
+!collector/admin.mjs
+!collector/catalogue.mjs
+!collector/build-catalogue.mjs
+!collector/collector.test.mjs
+!collector/schema.sql
+!collector/README.md
+!collector/wrangler.example.jsonc
+!stats.html
+!stats.css
+!stats.js
+!collector/supabase/
+!collector/supabase/index.ts
+!collector/supabase/handler.mjs
+!collector/supabase/validation.mjs
+!collector/supabase/handler.test.mjs
+!collector/supabase/migrations/
+!collector/supabase/migrations/*.sql
+
+
+!qa/stats.test.cjs

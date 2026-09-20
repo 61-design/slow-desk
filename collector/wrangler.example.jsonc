@@ -1,0 +1,25 @@
+{
+  "name": "slow-desk-collector",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-09-20",
+  "workers_dev": true,
+  "vars": {
+    "DAILY_EVENT_CAP": "0",
+    "TEST_DATA": "true"
+  },
+  "observability": {
+    "enabled": false
+  },
+  "triggers": {
+    "crons": [
+      "0 20 * * *"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "slow-desk-receipts",
+      "database_id": "REPLACE_WITH_YOUR_DATABASE_ID"
+    }
+  ]
+}
