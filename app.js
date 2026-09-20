@@ -220,7 +220,13 @@
   $('mini-mode').addEventListener('click',() => { const order=['list','shuffle','single']; audio.setMode(order[(order.indexOf(state.mode)+1)%order.length]); });
   $('play-scope').addEventListener('change',event => { $('search').value=''; browsedScope=event.target.value; browsedSeries=null; audio.setScope(event.target.value); });
   [['volume','setVolume'],['rain-volume','setRainVolume'],['fire-volume','setFireVolume']].forEach(([id,method]) => $(id).addEventListener('input',event => audio[method](Number(event.target.value)/100)));
-  [['music-toggle','setMusic'],['rain-toggle','setRain'],['fire-toggle','setFire']].forEach(([id,method]) => $(id).addEventListener('change',event => audio[method](event.target.checked)));
+  $('music-toggle').addEventListener('change', event => audio.setMusic(event.target.checked));
+  [['rain-toggle','setRain'],['fire-toggle','setFire']].forEach(([id,method]) => $(id).addEventListener('change', event => {
+    const enabled = event.target.checked;
+    audio[method](enabled);
+    // A direct switch gesture starts the selected mix. Restoring saved preferences stays silent.
+    if (enabled && !audio.active) audio.start();
+  }));
   $('sleep-timer').addEventListener('change',event => audio.setSleepTimer(Number(event.target.value)));
   $('search').addEventListener('input',renderLibrary);
   $('clear-search').addEventListener('click',() => { $('search').value=''; renderLibrary(); $('search').focus(); });

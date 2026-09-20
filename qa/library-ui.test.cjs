@@ -220,6 +220,20 @@ async function test(name, run) {
 }
 
 (async () => {
+  await test('主动打开环境声立即发声，关闭音乐可独立听雨，恢复偏好不自动播放', async () => {
+    const env = environment(); await toggle(env, 'music-toggle', false);
+    await toggle(env, 'rain-toggle', true); assertPlayer(env, true);
+    assert.equal(env.contexts.length, 1); assert.equal(env.contexts[0].state, 'running');
+    assert.equal(env.contexts[0].sources.filter(source => source.started && !source.stopped).length, 1);
+    assert.equal(currentMedia(env).paused, true); assert.equal(currentMedia(env).playCalls, 0);
+    await toggle(env, 'fire-toggle', true);
+    assert.equal(env.contexts[0].sources.filter(source => source.started && !source.stopped).length, 2);
+    await toggle(env, 'rain-toggle', false); await toggle(env, 'fire-toggle', false); assertPlayer(env, false);
+    await toggle(env, 'rain-toggle', true); assertPlayer(env, true);
+    const restored = environment({stored:JSON.stringify(env.preference())});
+    assert.equal(restored.element('rain-toggle').checked, true); assertPlayer(restored, false);
+    assert.equal(restored.contexts.length, 0);
+  });
   await test('播放中浏览其他系列不换曲、不重启媒体、不更改队列与偏好', async () => {
     const env = environment(); await env.event('play', 'click'); env.advance(1000);
     const media = currentMedia(env), count = media.playCalls, saved = env.store.get(preferenceKey);
@@ -385,8 +399,8 @@ async function test(name, run) {
   });
   await test('音乐零音量不影响雨火，三者独立开关音量并可仅听环境声', async () => {
     const env = environment(); await toggle(env, 'rain-toggle', true); await toggle(env, 'fire-toggle', true);
-    assert.equal(env.contexts.length, 0, 'Choosing an ambient source while paused must not initialize playback');
-    await env.event('play', 'click'); env.advance(1000);
+    assert.equal(env.contexts.length, 1, 'Direct ambient switches start the selected mix');
+    env.advance(1000);
     const context = env.contexts[0];
     assert.equal(context.sources.filter(source => source.started && !source.stopped).length, 2);
     const ambientGains = context.gains.map(node => node.gain.value);
@@ -397,7 +411,7 @@ async function test(name, run) {
     assert.doesNotMatch(env.element('play-status').textContent, /音量为零/);
     await choose(env, 'rain-volume', '44', 'input'); await choose(env, 'fire-volume', '19', 'input');
     assert.equal(env.preference().rainVolume, .44); assert.equal(env.preference().fireVolume, .19);
-    assert.equal(context.gains[0].gain.value, 1); assert.equal(context.gains[1].gain.value, .44*.22); assert.equal(context.gains[2].gain.value, .19*.30);
+    assert.equal(context.gains[0].gain.value, 1); assert.equal(context.gains[1].gain.value, .44); assert.equal(context.gains[2].gain.value, .19);
     await toggle(env, 'rain-toggle', false); assert.equal(context.sources.filter(source => source.started && !source.stopped).length, 1);
     assert.equal(env.element('fire-toggle').checked, true); await toggle(env, 'music-toggle', false);
     assert.equal(currentMedia(env).paused, true); assertPlayer(env, true); assert.equal(env.element('mini-title').textContent, '篝火');
@@ -485,7 +499,7 @@ async function test(name, run) {
     assertPlayer(env, true); assert.equal(currentMedia(env).paused, false); assert.equal(env.contexts.length, 0);
   });
   await test('切到后台保持音乐与环境声，离开页面停止声音', async () => {
-    const env = environment(); await toggle(env, 'fire-toggle', true); await env.event('play', 'click'); env.advance(1000);
+    const env = environment(); await toggle(env, 'fire-toggle', true); env.advance(1000);
     env.document.hidden=true; env.document.dispatch('visibilitychange'); await env.flush();
     assert.equal(currentMedia(env).paused, false); assertPlayer(env, true);
     env.window.dispatch('pagehide'); await env.flush();
@@ -578,7 +592,7 @@ async function test(name, run) {
   });
   await test('前往音乐平台时暂停书桌音乐与环境声，避免声音叠加', async () => {
     const env = environment(); await selectSeries(env, 'midnight');
-    await toggle(env, 'rain-toggle', true); await env.event('play', 'click'); assertPlayer(env, true);
+    await toggle(env, 'rain-toggle', true); assertPlayer(env, true);
     env.element('related-list').children[0].dispatch('click'); await env.flush(); env.advance(500);
     assertPlayer(env, false); assert.equal(currentMedia(env).paused, true);
     assert.ok(env.contexts[0].sources.every(source => source.stopped));

@@ -71,7 +71,7 @@ body[data-series=midnight]{--green:#656078}
 @media(min-width:851px){.intro h1{font-size:29px}.primary-player .player{justify-content:flex-start}.primary-player .play-button{max-width:180px}.primary-player{margin-bottom:22px}.track-list{max-height:194px}}
 @media(max-width:850px){
   .site-header{height:88px;padding:20px 24px}.brand{font-size:16px;font-weight:400;letter-spacing:.12em}.brand small{font-size:7px}
-  .immersion-button{border:0;border-radius:4px;background:transparent;padding:10px 0 10px 12px;letter-spacing:0;font-size:11px}
+  .immersion-button{border:0;border-radius:4px;background:transparent;padding:10px 12px;min-height:44px;flex-shrink:0;white-space:nowrap;justify-content:center;letter-spacing:0;font-size:11px}
   .desk-scene{opacity:.42;background-position:64% center}.desk-scene:after{background:linear-gradient(90deg,#f0f0e8fa 0%,#f0f0e8d9 48%,#f0f0e866 100%)}
   main{padding:10px 26px calc(104px + env(safe-area-inset-bottom));min-height:calc(100svh - 88px)}
   .intro{padding-top:0}.intro h1{font-size:27px;line-height:1.6;margin-bottom:27px;letter-spacing:.05em}

@@ -91,6 +91,23 @@ async function flush() { for (let i = 0; i < 8; i++) await Promise.resolve(); }
 async function ended(env) { env.engine.audio.finish(); await flush(); }
 
 (async () => {
+  await test('环境声默认输出有可用电平，音量滑块不再被隐藏倍率再次衰减', async () => {
+    const env = environment({sampleRate:48000}); env.engine.setMusic(false); env.engine.setRain(true); env.engine.setFire(true);
+    await env.engine.start();
+    for (const kind of ['rain','fire']) {
+      const data = env.engine[`${kind}Source`].buffer.getChannelData(0);
+      let energy = 0; for (const value of data) energy += value * value;
+      const output = Math.sqrt(energy/data.length) * env.engine[`${kind}Gain`].gain.value;
+      assert.ok(output > .012 && output < .04, `${kind} default RMS ${output} should be audible but remain background level`);
+      env.engine.setEffectVolume(kind, 0); assert.equal(env.engine[`${kind}Gain`].gain.value, 0);
+    }
+  });
+  await test('手机音频上下文中断后，下一次播放会重新恢复环境声', async () => {
+    const env = environment(); env.engine.setMusic(false); env.engine.setRain(true); await env.engine.start();
+    env.engine.context.state = 'interrupted'; env.engine.pause(true);
+    assert.equal(await env.engine.start(), true); assert.equal(env.engine.context.state, 'running');
+    assert.equal(env.engine.rainSource.started, true);
+  });
   await test('首次进入不播放；默认列表循环、当前系列、独立音量且不申请环境音权限', async () => {
     const env = environment(), state = env.engine.getState();
     assert.equal(state.status, 'off'); assert.equal(state.playing, false); assert.equal(state.mode, 'list'); assert.equal(state.scope, 'series');
@@ -224,8 +241,8 @@ async function ended(env) { env.engine.audio.finish(); await flush(); }
     const rain = env.engine.rainGain.gain.value, fire = env.engine.fireGain.gain.value;
     env.engine.setVolume(0); env.advance(200); assert.equal(env.engine.audio.volume, 0);
     assert.equal(env.engine.rainGain.gain.value, rain); assert.equal(env.engine.fireGain.gain.value, fire);
-    env.engine.setFireVolume(.6); assert.equal(env.engine.fireGain.gain.value, .18); assert.equal(env.engine.rainGain.gain.value, rain);
-    env.engine.setRainVolume(.5); assert.equal(env.engine.rainGain.gain.value, .11); assert.equal(env.engine.fireGain.gain.value, .18);
+    env.engine.setFireVolume(.6); assert.equal(env.engine.fireGain.gain.value, .6); assert.equal(env.engine.rainGain.gain.value, rain);
+    env.engine.setRainVolume(.5); assert.equal(env.engine.rainGain.gain.value, .5); assert.equal(env.engine.fireGain.gain.value, .6);
   });
   await test('雨火 buffer 缓存，关闭会淡出并定时停止，重开不重复持有旧活动源', async () => {
     const env = environment(); env.engine.setMusic(false); env.engine.setFire(true); await env.engine.start();

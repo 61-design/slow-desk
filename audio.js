@@ -265,7 +265,7 @@
         this.effects.gain.value = 0;
         this.effects.connect(this.context.destination);
       }
-      if (this.context.state === 'suspended') await this.context.resume();
+      if (this.context.state === 'suspended' || this.context.state === 'interrupted') await this.context.resume();
       if (this.context.state !== 'running') throw new Error('Web Audio unavailable');
     }
 
@@ -651,7 +651,8 @@
       return true;
     }
 
-    effectVolume(kind) { return this[`${kind}Volume`] * (kind === 'rain' ? 0.22 : 0.30); }
+    // The buffers are already quiet; a second attenuation made phone playback barely audible.
+    effectVolume(kind) { return this[`${kind}Volume`]; }
 
     effectBuffer(kind) {
       const key = `${kind}Buffer`;
