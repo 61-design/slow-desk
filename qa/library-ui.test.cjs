@@ -113,7 +113,7 @@ function documentFromHTML(html) {
   return { document, Element };
 }
 
-function environment({ stored = null, rainAvailable = true, storageBlocked = false, search = '', mobile = false } = {}) {
+function environment({ stored = null, rainAvailable = true, storageBlocked = false, search = '', mobile = false, observerSupported = false } = {}) {
   const { document, Element } = documentFromHTML(files['index.html']);
   let now = 0, timerId = 0;
   const timers = new Map(), audios = [], writes = [], contexts = [];
@@ -141,6 +141,8 @@ function environment({ stored = null, rainAvailable = true, storageBlocked = fal
   const window = eventTarget();
   window.location = {search};
   window.matchMedia = () => Object.assign(eventTarget(), {matches:mobile});
+  let intersect;
+  if (observerSupported) window.IntersectionObserver = class { constructor(callback) { intersect=callback; } observe() {} };
   if (rainAvailable) window.AudioContext = FakeContext;
   const sandbox = vm.createContext({
     document, window, URL, URLSearchParams, navigator:{}, Audio: FakeAudio, Date: FakeDate, performance: { now: () => now },
@@ -157,6 +159,7 @@ function environment({ stored = null, rainAvailable = true, storageBlocked = fal
     const result = document.getElementById(id); assert.ok(result, `Actual HTML element #${id} is required`); return result;
   };
   return { document, window, audios, writes, contexts, store, element, flush,
+    primaryVisible(value) { intersect([{isIntersecting:value}]); },
     tracks: window.CALM_TRACKS,
     async event(id, type, values = {}) { const result = element(id).dispatch(type, values); await flush(); return result; },
     async clickTrack(index) { element('track-list').children[index].dispatch('click'); await flush(); },
@@ -217,7 +220,16 @@ async function test(name, run) {
 }
 
 (async () => {
-  await test('手机常驻播放条，退出沉浸仍保留；桌面只在沉浸时显示', async () => {
+  await test('手机主按钮可见时隐藏重复播放条，下滑后出现，回到首屏后隐藏', async () => {
+    const env=environment({mobile:true,observerSupported:true});
+    env.primaryVisible(true); assert.equal(env.element('mini-player').hidden,true);
+    env.primaryVisible(false); assert.equal(env.element('mini-player').hidden,false);
+    env.primaryVisible(true); assert.equal(env.element('mini-player').hidden,true);
+    await env.event('immersion','click'); assert.equal(env.element('mini-player').hidden,false);
+    await env.event('immersion','click'); assert.equal(env.element('mini-player').hidden,true);
+  });
+
+  await test('不支持可见性观察时手机保留播放条；桌面只在沉浸时显示', async () => {
     for (const mobile of [true, false]) {
       const env = environment({mobile});
       assert.equal(env.element('mini-player').hidden, !mobile);

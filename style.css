@@ -41,24 +41,47 @@ body[data-series=midnight]{--green:#656078}
 .related-action{font-size:10px;color:var(--green);flex-shrink:0}
 .related-track[hidden],.related-music[hidden]{display:none}
 
-/* Put listening before browsing; keep playback within reach on phones. */
-.primary-player{padding:18px 18px 10px;margin:0 0 26px;border:1px solid #c8cfbf;background:#f4f3eceb;border-radius:18px}
-.current-series{font-size:11px;color:var(--muted);letter-spacing:.14em;margin:0 0 5px}
-.current-title{font:400 25px/1.4 var(--serif);margin:0;overflow-wrap:anywhere}
-.primary-player .now-playing{margin-bottom:6px}.primary-player #now-track{display:none}
-.share-track{display:block;background:transparent;color:var(--green);font-size:11px;margin:0 auto;padding:10px 12px;min-height:44px}
-#share-status:empty{display:none}#share-status{text-align:center;margin:0 0 6px}
-.share-url{width:100%;padding:10px;background:var(--paper);border:1px solid var(--line);border-radius:8px;font:12px var(--sans)}
-.sound-settings{border-top:1px solid var(--line);margin-top:18px}.sound-settings>summary{padding:12px 0;cursor:pointer;font-size:12px}
+/* Preserve the quiet desk: open surfaces, a single green, and restrained controls.
+   Visual direction: preserve; variance 4, motion 1, density 4. */
+body[data-series=midnight]{--green:#49624f}
+.intro .eyebrow{display:none}.intro h1{margin:0 0 28px;font-size:29px;font-weight:400;line-height:1.55;letter-spacing:.04em}
+.primary-player{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:0 0 22px;margin:0 0 24px;border:0;border-bottom:1px solid #cbd3c2;background:none;border-radius:0}
+.current-series{grid-column:1;grid-row:1;font-size:10px;color:#63725e;letter-spacing:.12em;margin:0 0 5px}
+.current-title{grid-column:1;grid-row:2;font:400 24px/1.4 var(--serif);letter-spacing:.06em;margin:0;overflow-wrap:anywhere}
+.share-track{grid-column:2;grid-row:1/3;align-self:center;background:none;color:#5c7155;font-size:11px;padding:10px 0 10px 14px;min-height:44px;text-align:right}
+.primary-player .player{grid-column:1/-1;gap:14px;margin-top:18px;justify-content:flex-start}
+.primary-player .play-button{height:44px;max-width:180px;font-size:12px;letter-spacing:.08em;flex:1;border-radius:5px}
+.primary-player .small-control{min-height:44px;min-width:44px;border-radius:4px}
+.primary-player .play-status{grid-column:1/-1;font-size:10px;color:#62735b;margin:8px 0 0;text-align:left;padding-left:58px}
+.primary-player .play-status[data-error=true]{color:#855133}
+#share-status{grid-column:1/-1;margin:8px 0 0;font-size:11px}#share-status:empty{display:none}
+.share-url{grid-column:1/-1;width:100%;padding:10px;margin-top:8px;background:var(--paper);border:1px solid var(--line);border-radius:4px;font:12px var(--sans)}
+.series-heading{margin-bottom:9px}.series-heading h2{font-size:12px}.series-heading>span{color:#68765e}
+.series-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px;border-bottom:1px solid #d0d8c8}
+.series-button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;min-height:40px;padding:8px 0;font-size:11px;color:#61725a}
+.series-button:hover{background:#e4e9dc80}.series-button[aria-pressed=true]{background:none;color:#344e37;border-color:#647c59;font-weight:600}
+.series-description{font-size:10px;line-height:1.75;color:#68775f;margin:11px 0 14px}
+.search-row input{color:#344a3d}.search-row input::placeholder{color:#68775f}
+.track-row{border-bottom-color:#d6ddce}.track[aria-pressed=true]{background:#dce5d2a6}.track-description,.track-time{color:#68775f}
+.sound-settings{border-top:1px solid var(--line);margin-top:18px}.sound-settings>summary{padding:12px 0;cursor:pointer;font-size:12px;color:#526749}
+.sound-settings .now-playing{align-items:flex-start;text-align:left;margin:2px 0 12px;font-size:11px}.sound-settings .now-playing a{font-size:10px;color:#62735b}
 .analytics-choice{display:flex;gap:8px;align-items:center;min-height:44px;font-size:12px}
-.mini-player{z-index:5}.small-control{min-height:44px;min-width:44px}
+.mini-player{z-index:5;border-radius:8px;background:#eff1e7f5;border:1px solid #c9d2bf;box-shadow:0 4px 18px #30412d12;padding:6px 10px;gap:10px}
+.mini-player button:first-child{border-radius:5px}.mini-player .mini-mode{border:0}.mini-player .mini-eyebrow{color:#637459}
+@media(min-width:851px){.intro h1{font-size:29px}.primary-player .player{justify-content:flex-start}.primary-player .play-button{max-width:180px}.primary-player{margin-bottom:22px}.track-list{max-height:194px}}
 @media(max-width:850px){
-  .site-header{height:80px;padding:18px 20px}.intro h1{font-size:26px;margin-bottom:18px}
-  main{padding:8px 20px calc(116px + env(safe-area-inset-bottom));min-height:calc(100svh - 80px)}
-  .primary-player{margin-bottom:24px;padding:16px 14px 8px}.primary-player .play-button{height:50px;font-size:14px}
-  .current-title{font-size:28px}.play-status{font-size:11px}.mini-player{bottom:calc(12px + env(safe-area-inset-bottom));max-width:430px}
+  .site-header{height:88px;padding:20px 24px}.brand{font-size:16px;font-weight:400;letter-spacing:.12em}.brand small{font-size:7px}
+  .immersion-button{border:0;border-radius:4px;background:transparent;padding:10px 0 10px 12px;letter-spacing:0;font-size:11px}
+  .desk-scene{opacity:.42;background-position:64% center}.desk-scene:after{background:linear-gradient(90deg,#f0f0e8fa 0%,#f0f0e8d9 48%,#f0f0e866 100%)}
+  main{padding:10px 26px calc(104px + env(safe-area-inset-bottom));min-height:calc(100svh - 88px)}
+  .intro{padding-top:0}.intro h1{font-size:27px;line-height:1.6;margin-bottom:27px;letter-spacing:.05em}
+  .primary-player{padding:0 0 22px;margin-bottom:23px}.current-title{font-size:24px}.current-series{font-size:11px}
+  .primary-player .player{gap:14px;margin-top:17px;justify-content:space-between}.primary-player .play-button{max-width:none;height:46px;font-size:13px}
+  .primary-player .play-status{text-align:center;padding-left:0;font-size:10px}.share-track{font-size:11px}
+  .series-button{min-height:40px;font-size:12px}.series-description{font-size:11px;margin:12px 0 14px}
+  .mini-player{bottom:calc(12px + env(safe-area-inset-bottom));width:calc(100% - 32px);max-width:430px}
   .mini-player button{min-height:44px;min-width:44px}.mini-player>div{max-width:none}.mini-player #mini-title{max-width:100%}
-  .favorite-button{width:44px}.dislike-button{min-width:48px}.series-button{min-height:44px;font-size:11px}
+  .favorite-button{width:44px}.dislike-button{min-width:48px}.track-title{font-size:13px}.track-description{font-size:10px}
   .search-row input,.thought-line input{font-size:16px}.switch-label{min-height:44px}
   .track-list{max-height:320px}.settings-note{font-size:11px}.sound-settings select{font-size:16px}
 }

@@ -41,7 +41,6 @@
         <button class="small-control" id="next" aria-label="下一首"><svg aria-hidden="true"><use href="#i-next"/></svg></button>
       </div>
       <p class="play-status" id="play-status" role="status">点一下播放，再去做手边的事</p>
-      <div class="now-playing"><span id="now-track"></span><a id="track-credit" href="#" target="_blank" rel="noopener noreferrer"></a></div>
       <button id="share-track" class="share-track">分享这首歌 ↗</button><p id="share-status" class="settings-note" role="status"></p>
       <input id="share-url" class="share-url" aria-label="复制分享链接" readonly hidden>
       </div>
@@ -59,6 +58,7 @@
         <div id="related-list"></div>
       </details>
       <details class="sound-settings"><summary>播放设置与声音</summary>
+      <div class="now-playing"><span id="now-track"></span><a id="track-credit" href="#" target="_blank" rel="noopener noreferrer"></a></div>
       <div class="play-options"><label>播放方式<select id="play-mode" aria-label="播放方式"><option value="list">列表循环</option><option value="shuffle">随机播放</option><option value="single">单曲循环</option></select></label><label>播放范围<select id="play-scope" aria-label="播放范围"><option value="series">当前系列</option><option value="all">全部音乐</option><option value="favorites">我的收藏</option></select></label></div>
       <div class="volume-control music-volume"><label class="switch-label"><span class="source-title">音乐</span><input type="checkbox" id="music-toggle" checked><span class="switch" aria-hidden="true"></span></label><input id="volume" type="range" min="0" max="100" value="38" aria-label="音乐音量"><output id="volume-value" for="volume">38%</output></div>
       <details class="ambient-panel"><summary>环境声 <span id="ambient-summary">轻雨 / 篝火，可独立混合</span></summary><div class="ambient-controls"><div class="ambient-source"><label class="switch-label"><span class="source-title">窗外轻雨</span><input type="checkbox" id="rain-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="rain-volume" type="range" min="0" max="100" value="25" aria-label="轻雨音量"><output id="rain-volume-value" for="rain-volume">25%</output></div></div><div class="ambient-source"><label class="switch-label"><span class="source-title">壁炉篝火</span><input type="checkbox" id="fire-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="fire-volume" type="range" min="0" max="100" value="28" aria-label="篝火音量"><output id="fire-volume-value" for="fire-volume">28%</output></div></div></div><p class="ambient-tip">可以只听环境声，也可以与音乐叠加。雨与火声由本地合成。</p></details>

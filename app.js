@@ -193,7 +193,15 @@
     analytics.visit();
   }
   const mobile = window.matchMedia('(max-width: 850px)');
-  const updateMini = () => { $('mini-player').hidden = !(immersed || mobile.matches); };
+  let primaryVisible = 'IntersectionObserver' in window;
+  const updateMini = () => { $('mini-player').hidden = !(immersed || (mobile.matches && !primaryVisible)); };
+  if ('IntersectionObserver' in window) {
+    const observer = new window.IntersectionObserver(entries => {
+      primaryVisible = entries[0].isIntersecting;
+      updateMini();
+    });
+    observer.observe($('play'));
+  }
   mobile.addEventListener('change', updateMini);
   updateMini();
 
