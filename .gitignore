@@ -5,6 +5,8 @@
 !README.md
 !index.html
 !app.js
+!analytics.js
+!analytics-config.js
 !audio.js
 !tracks.js
 !style.css
@@ -14,5 +16,7 @@
 !qa/
 !qa/library-ui.test.cjs
 !qa/player-upgrade.test.cjs
+!qa/analytics.test.cjs
+!统计接入说明.md
 .DS_Store
 

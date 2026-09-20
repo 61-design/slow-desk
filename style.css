@@ -40,3 +40,25 @@ body[data-series=midnight]{--green:#656078}
 .related-track .track-content{display:flex;flex-direction:column}
 .related-action{font-size:10px;color:var(--green);flex-shrink:0}
 .related-track[hidden],.related-music[hidden]{display:none}
+
+/* Put listening before browsing; keep playback within reach on phones. */
+.primary-player{padding:18px 18px 10px;margin:0 0 26px;border:1px solid #c8cfbf;background:#f4f3eceb;border-radius:18px}
+.current-series{font-size:11px;color:var(--muted);letter-spacing:.14em;margin:0 0 5px}
+.current-title{font:400 25px/1.4 var(--serif);margin:0;overflow-wrap:anywhere}
+.primary-player .now-playing{margin-bottom:6px}.primary-player #now-track{display:none}
+.share-track{display:block;background:transparent;color:var(--green);font-size:11px;margin:0 auto;padding:10px 12px;min-height:44px}
+#share-status:empty{display:none}#share-status{text-align:center;margin:0 0 6px}
+.share-url{width:100%;padding:10px;background:var(--paper);border:1px solid var(--line);border-radius:8px;font:12px var(--sans)}
+.sound-settings{border-top:1px solid var(--line);margin-top:18px}.sound-settings>summary{padding:12px 0;cursor:pointer;font-size:12px}
+.analytics-choice{display:flex;gap:8px;align-items:center;min-height:44px;font-size:12px}
+.mini-player{z-index:5}.small-control{min-height:44px;min-width:44px}
+@media(max-width:850px){
+  .site-header{height:80px;padding:18px 20px}.intro h1{font-size:26px;margin-bottom:18px}
+  main{padding:8px 20px calc(116px + env(safe-area-inset-bottom));min-height:calc(100svh - 80px)}
+  .primary-player{margin-bottom:24px;padding:16px 14px 8px}.primary-player .play-button{height:50px;font-size:14px}
+  .current-title{font-size:28px}.play-status{font-size:11px}.mini-player{bottom:calc(12px + env(safe-area-inset-bottom));max-width:430px}
+  .mini-player button{min-height:44px;min-width:44px}.mini-player>div{max-width:none}.mini-player #mini-title{max-width:100%}
+  .favorite-button{width:44px}.dislike-button{min-width:48px}.series-button{min-height:44px;font-size:11px}
+  .search-row input,.thought-line input{font-size:16px}.switch-label{min-height:44px}
+  .track-list{max-height:320px}.settings-note{font-size:11px}.sound-settings select{font-size:16px}
+}

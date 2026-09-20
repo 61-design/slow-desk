@@ -1,4 +1,4 @@
-/* Local playback preferences, favorites and skipped songs only; no work notes or analytics. */
+/* Playback preferences stay local. Optional analytics never receives notes or search text. */
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -11,6 +11,9 @@
   const rows = new Map();
   const relatedRows = new Map();
   let ready = false, immersed = false, audio, state, saved = {};
+  const params = new URLSearchParams(window.location.search);
+  const sharedTrack = tracks.find(track => track.id === params.get('track'));
+  const analytics = window.SlowDeskAnalytics ? new window.SlowDeskAnalytics(window.SLOW_DESK_ANALYTICS || {}) : null;
   try { saved = JSON.parse(localStorage.getItem(preferenceKey) || '{}') || {}; } catch (_) {}
   if (typeof saved !== 'object' || Array.isArray(saved)) saved = {};
   const duration = seconds => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
@@ -137,7 +140,11 @@
       $(id).setAttribute('aria-label', active ? '暂停背景声音' : '播放背景声音');
       $(id).querySelector('use').setAttribute('href', active ? '#i-pause' : '#i-play');
     });
-    $('play').querySelector('span').textContent = active ? '暂停一下' : '开始陪伴';
+    $('play').querySelector('span').textContent = active ? (state.status === 'loading' ? '加载中 · 可暂停' : '暂停播放') : (state.status === 'error' ? '重试播放' : '开始播放');
+    $('play').setAttribute('aria-busy', String(state.status === 'loading'));
+    $('current-series').textContent = collection.title;
+    $('current-title').textContent = track.title;
+    if (ready && analytics) analytics.bind(audio.audio, track, () => audio.active && audio.music && audio.volume > 0);
     slider('volume',state.volume); slider('rain-volume',state.rainVolume); slider('fire-volume',state.fireVolume);
     $('music-toggle').checked = state.music; $('rain-toggle').checked = state.rain; $('fire-toggle').checked = state.fire;
     $('rain-toggle').disabled = !state.rainAvailable; $('rain-volume').disabled = !state.rainAvailable;
@@ -148,7 +155,7 @@
     $('ambient-summary').textContent = ambience ? `${ambience}已选${active ? '' : ' · 暂停中'}` : '轻雨 / 篝火，可独立混合';
     $('play-mode').value = state.mode; $('play-scope').value = state.scope;
     $('mini-title').textContent = state.music ? track.title : ambience || '一会儿安静';
-    $('mini-status').textContent = `${state.playing ? '正在陪伴' : state.status === 'loading' ? '声音准备中' : '已暂停'} · ${modes[state.mode]}`;
+    $('mini-status').textContent = `${state.playing ? '正在播放' : state.status === 'loading' ? '声音准备中' : '已暂停'} · ${modes[state.mode]}`;
     $('mini-mode').textContent = {list:'列表',single:'单曲',shuffle:'随机'}[state.mode];
     $('mini-mode').setAttribute('aria-label', `切换播放方式，当前${modes[state.mode]}`);
     const allMuted = (!state.music || state.volume === 0) && (!state.rain || state.rainVolume === 0) && (!state.fire || state.fireVolume === 0);
@@ -166,7 +173,7 @@
 
   audio = new window.CalmAudio({onState:render});
   if (Array.isArray(saved.favorites)) audio.setFavorites(saved.favorites);
-  if (tracks.some(track => track.id === saved.trackId)) audio.selectTrack(saved.trackId);
+  audio.selectTrack(tracks.some(track => track.id === saved.trackId) ? saved.trackId : 'echo-public-night');
   if (Array.isArray(saved.disliked)) audio.setDisliked(saved.disliked);
   if (['single','list','shuffle'].includes(saved.mode)) audio.setMode(saved.mode);
   if (['series','all','favorites'].includes(saved.scope)) audio.setScope(saved.scope);
@@ -174,11 +181,25 @@
   if (typeof saved.music === 'boolean') audio.setMusic(saved.music);
   if (saved.rain === true && audio.getState().rainAvailable) audio.setRain(true);
   if (saved.fire === true && audio.getState().fireAvailable) audio.setFire(true);
+  if (sharedTrack) {
+    audio.setScope('series');
+    audio.selectTrack(sharedTrack.id);
+  }
   ready = true; render(audio.getState());
+  if (analytics && analytics.configured) {
+    $('analytics-settings').hidden = false;
+    $('analytics-toggle').checked = analytics.enabled;
+    $('analytics-toggle').addEventListener('change', event => analytics.setEnabled(event.target.checked));
+    analytics.visit();
+  }
+  const mobile = window.matchMedia('(max-width: 850px)');
+  const updateMini = () => { $('mini-player').hidden = !(immersed || mobile.matches); };
+  mobile.addEventListener('change', updateMini);
+  updateMini();
 
   function togglePlayback() { if (state.playing || state.status === 'loading') audio.pause(); else audio.start(); }
   function setImmersed(value) {
-    immersed = value; document.body.classList.toggle('is-immersed',value); $('mini-player').hidden = !value;
+    immersed = value; document.body.classList.toggle('is-immersed',value); updateMini();
     $('immersion').setAttribute('aria-pressed',String(value)); $('immersion').querySelector('span').textContent = value ? '展开界面' : '收起界面';
     $('immersion').querySelector('use').setAttribute('href',value ? '#i-close' : '#i-expand'); $('immersion').focus();
   }
@@ -202,6 +223,28 @@
     if (event.code !== 'Space' || event.altKey || event.ctrlKey || event.metaKey || event.repeat || $('credits-dialog').open) return;
     if (event.target.closest('input,textarea,select,button,a,summary,[contenteditable="true"]')) return;
     event.preventDefault(); togglePlayback();
+  });
+  $('share-track').addEventListener('click', async () => {
+    const track = tracks.find(item => item.id === state.trackId);
+    const url = new URL('https://61-design.github.io/slow-desk/');
+    url.searchParams.set('track', track.id);
+    url.searchParams.set('from', 'share');
+    $('share-status').textContent = '';
+    $('share-url').hidden = true;
+    try {
+      if (navigator.share) {
+        await navigator.share({title:`慢慢书桌 · ${track.title}`, text:'留一点安静，听一首喜欢的歌。', url:url.href});
+        $('share-status').textContent = '已完成分享操作';
+      } else if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url.href);
+        $('share-status').textContent = '链接已复制，发给朋友就能找到这首歌';
+      } else throw new Error('Manual copy');
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      $('share-url').value = url.href; $('share-url').hidden = false;
+      $('share-url').focus(); $('share-url').select();
+      $('share-status').textContent = '长按或复制上方链接，发给朋友';
+    }
   });
   let creditsBuilt=false;
   $('open-credits').addEventListener('click',() => {
