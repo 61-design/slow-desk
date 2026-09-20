@@ -12,7 +12,7 @@
   let browsedSeries = null, browsedScope = null;
   const rows = new Map();
   const relatedRows = new Map();
-  let ready = false, immersed = false, audio, state, saved = {};
+  let ready = false, immersed = false, hasPlayed = false, audio, state, saved = {};
   const params = new URLSearchParams(window.location.search);
   const sharedTrack = tracks.find(track => track.id === params.get('track'));
   const analytics = window.SlowDeskAnalytics ? new window.SlowDeskAnalytics(window.SLOW_DESK_ANALYTICS || {}) : null;
@@ -40,7 +40,8 @@
     button.setAttribute('aria-pressed', 'false');
     const content = document.createElement('span'); content.className = 'track-content';
     const title = document.createElement('span'); title.className = 'track-title'; title.textContent = track.title;
-    const description = document.createElement('span'); description.className = 'track-description'; description.textContent = `${track.artist || '慢慢书桌原创'} · ${track.subtitle}`;
+    const description = document.createElement('span'); description.className = 'track-description'; description.textContent = track.series === 'midnight' ? 'AI 配乐 · 轻松陪伴' : track.subtitle;
+    button.title = `${track.title} — ${track.artist || '慢慢书桌原创'} · ${track.subtitle}`;
     const heading = document.createElement('span'); heading.className = 'track-heading';
     const skipped = document.createElement('span'); skipped.className = 'track-skipped'; skipped.textContent = '已跳过'; skipped.hidden = true;
     heading.append(title, skipped); content.append(heading, description);
@@ -65,7 +66,7 @@
       audio.setDisliked([...ids]);
     });
     row.append(button, star, dislike); $('track-list').appendChild(row);
-    rows.set(track.id, {row, button, star, dislike, skipped});
+    rows.set(track.id, {row, button, star, dislike, skipped, description});
   });
 
   recommendations.forEach(track => {
@@ -106,7 +107,9 @@
     $('track-count').textContent = `${visible.length} 首${skippedCount ? ' · 跳过 ' + skippedCount : ''}${query ? '' : ' · ' + modes[state.mode]}`;
     $('clear-search').hidden = !query;
     for (const track of tracks) {
-      const {row, button, star, dislike, skipped} = rows.get(track.id);
+      const {row, button, star, dislike, skipped, description} = rows.get(track.id);
+      const subtitle = track.series === 'midnight' ? 'AI 配乐 · 轻松陪伴' : track.subtitle;
+      description.textContent = `${track.id === state.trackId && state.musicPlaying ? '正在播放 · ' : ''}${subtitle}`;
       row.hidden = !shown.has(track.id);
       button.setAttribute('aria-pressed', String(track.id === state.trackId));
       const favorite = favorites.has(track.id);
@@ -144,10 +147,21 @@
       $(id).setAttribute('aria-label', active ? '暂停背景声音' : '播放背景声音');
       $(id).querySelector('use').setAttribute('href', active ? '#i-pause' : '#i-play');
     });
-    $('play').querySelector('span').textContent = active ? (state.status === 'loading' ? '加载中 · 可暂停' : '暂停播放') : (state.status === 'error' ? '重试播放' : '开始播放');
+    if (state.playing) hasPlayed = true;
+    const musicShown = state.playing ? state.musicPlaying : state.music;
+    const shownEffects = state.playing ? state.playingEffects : ambientKinds.filter(kind => state[kind]);
+    const soundNames = [...(musicShown ? [track.title] : []), ...shownEffects.map(kind => ambientNames[kind])];
+    const soundTitle = soundNames.join(' ＋ ') || '此刻，安静';
+    const playLabel = !soundNames.length ? '挑选声音' : musicShown && !shownEffects.length ? `播放《${track.title}》` : `播放${shownEffects.length === 1 && !musicShown ? ambientNames[shownEffects[0]] : '这组声音'}`;
+    $('play').querySelector('span').textContent = active ? (state.status === 'loading' ? '加载中 · 可暂停' : soundNames.length > 1 ? '暂停全部' : '暂停播放') : (state.status === 'error' ? '重试播放' : playLabel);
     $('play').setAttribute('aria-busy', String(state.status === 'loading'));
-    $('current-series').textContent = collection.title;
-    $('current-title').textContent = track.title;
+    $('current-series').textContent = state.playing ? '正在播放' : state.status === 'loading' ? '正在准备声音' : state.status === 'error' ? '播放未成功' : hasPlayed ? '已暂停' : !soundNames.length ? '留一点安静' : sharedTrack ? '朋友分享给你' : saved.trackId ? '上次听到' : musicShown ? '为你选好' : '待播放';
+    $('current-title').textContent = soundTitle;
+    $('current-context').textContent = musicShown ? `来自「${collection.title}」${shownEffects.length ? ' · 叠加自然声' : ''}` : shownEffects.length ? '自然声 · 可以单独听' : '选一首音乐，或听一点自然声';
+    for (const id of ['previous','next','mini-next','mini-mode','share-track','music-play-options']) $(id).hidden = !musicShown;
+    $('music-mix').hidden = !state.music;
+    for (const kind of ambientKinds) $(`${kind}-mix`).hidden = !state[kind];
+    $('current-mix').hidden = !state.music && !ambientKinds.some(kind => state[kind]);
     if (ready && analytics) analytics.bind(audio.audio, track, () => audio.active && audio.music && audio.volume > 0);
     slider('volume',state.volume);
     $('music-toggle').checked = state.music;
@@ -160,12 +174,13 @@
     const ambience = ambientKinds.filter(kind => state[kind]).map(kind => ambientNames[kind]).join(' + ');
     $('ambient-summary').textContent = ambience ? `${ambience}已选${active ? '' : ' · 暂停中'}` : '轻雨 / 篝火 / 海浪 / 流水';
     $('play-mode').value = state.mode; $('play-scope').value = state.scope;
-    $('mini-title').textContent = state.music ? track.title : ambience || '一会儿安静';
-    $('mini-status').textContent = `${state.playing ? '正在播放' : state.status === 'loading' ? '声音准备中' : '已暂停'} · ${modes[state.mode]}`;
+    $('mini-title').textContent = soundTitle;
+    $('mini-title').title = soundTitle;
+    $('mini-status').textContent = `${state.playing ? '正在播放' : state.status === 'loading' ? '声音准备中' : '已暂停'}${musicShown ? ' · ' + modes[state.mode] : ' · 自然声'}`;
     $('mini-mode').textContent = {list:'列表',single:'单曲',shuffle:'随机'}[state.mode];
     $('mini-mode').setAttribute('aria-label', `切换播放方式，当前${modes[state.mode]}`);
     const allMuted = (!state.music || state.volume === 0) && ambientKinds.every(kind => !state[kind] || state[`${kind}Volume`] === 0);
-    $('play-status').textContent = state.playing && allMuted ? '当前声音音量为零，调高一点就能听见' : state.status === 'off' ? '点一下播放，再去做手边的事' : state.message;
+    $('play-status').textContent = state.playing && allMuted ? '当前声音音量为零，调高一点就能听见' : state.status === 'off' ? '点一下，就让声音陪着你' : state.message;
     $('play-status').dataset.error = String(state.status === 'error');
     $('now-track').textContent = `当前选择 · ${track.title}`;
     $('track-credit').textContent = `${track.artist || '慢慢书桌原创配乐'}${track.license ? ' · ' + track.license : ''}`;
@@ -190,6 +205,7 @@
     if (saved[kind] === true && audio.getState()[`${kind}Available`]) audio.setEffect(kind, true);
   }
   if (sharedTrack) {
+    audio.setMusic(true);
     audio.setScope('series');
     audio.selectTrack(sharedTrack.id);
   }
@@ -213,10 +229,32 @@
   mobile.addEventListener('change', updateMini);
   updateMini();
 
-  function togglePlayback() { if (state.playing || state.status === 'loading') audio.pause(); else audio.start(); }
+  function setSoundTab(kind, focus = false) {
+    for (const name of ['music','nature']) {
+      const selected = name === kind;
+      $(`${name}-tab`).setAttribute('aria-selected', String(selected));
+      $(`${name}-tab`).setAttribute('tabindex', selected ? '0' : '-1');
+      $(`${name}-pane`).hidden = !selected;
+    }
+    if (focus) $(`${kind}-tab`).focus();
+  }
+  for (const kind of ['music','nature']) {
+    $(`${kind}-tab`).addEventListener('click', () => setSoundTab(kind));
+    $(`${kind}-tab`).addEventListener('keydown', event => {
+      if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+      event.preventDefault();
+      setSoundTab(event.key === 'Home' ? 'music' : event.key === 'End' ? 'nature' : kind === 'music' ? 'nature' : 'music', true);
+    });
+  }
+  setSoundTab(state.music ? 'music' : 'nature');
+  function togglePlayback() {
+    if (state.playing || state.status === 'loading') audio.pause();
+    else if (!state.music && !ambientKinds.some(kind => state[kind])) setSoundTab('nature', true);
+    else audio.start();
+  }
   function setImmersed(value) {
     immersed = value; document.body.classList.toggle('is-immersed',value); updateMini();
-    $('immersion').setAttribute('aria-pressed',String(value)); $('immersion').querySelector('span').textContent = value ? '展开界面' : '收起界面';
+    $('immersion').setAttribute('aria-pressed',String(value)); $('immersion').querySelector('span').textContent = value ? '返回选声' : '安静模式';
     $('immersion').querySelector('use').setAttribute('href',value ? '#i-close' : '#i-expand'); $('immersion').focus();
   }
   ['play','mini-play'].forEach(id => $(id).addEventListener('click',togglePlayback));
@@ -231,6 +269,7 @@
     if (event.target.checked && !audio.active) audio.start();
   });
   for (const kind of ambientKinds) {
+    $(`remove-${kind}`).addEventListener('click', () => audio.setEffect(kind, false));
     $(`${kind}-volume`).addEventListener('input', event => audio.setEffectVolume(kind, Number(event.target.value)/100));
     $(`${kind}-toggle`).addEventListener('change', event => {
       const enabled = event.target.checked;

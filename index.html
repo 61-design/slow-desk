@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://61-design.github.io/slow-desk/assets/desk.png">
   <meta property="og:url" content="https://61-design.github.io/slow-desk/">
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="style.css?v=20260920-nature">
+  <link rel="stylesheet" href="style.css?v=20260920-unified">
 </head>
 <body>
   <svg class="icon-defs" aria-hidden="true"><defs>
@@ -27,28 +27,38 @@
   <div class="desk-scene" role="img" aria-label="柔和窗光下的木书桌，窗外是安静的绿色树影"></div>
   <header class="site-header">
     <a class="brand" href="./index.html" aria-label="慢慢书桌首页"><span class="brand-mark" aria-hidden="true">屿</span><span>慢慢书桌<small>A QUIET PLACE TO THINK</small></span></a>
-    <button class="immersion-button" id="immersion" aria-pressed="false"><svg aria-hidden="true"><use href="#i-expand"/></svg><span>收起界面</span></button>
+    <button class="immersion-button" id="immersion" aria-pressed="false"><svg aria-hidden="true"><use href="#i-expand"/></svg><span>安静模式</span></button>
   </header>
   <main>
-    <section class="sound-panel" aria-label="工作背景音乐">
-      <div class="intro"><p class="eyebrow">慢慢书桌 / 音乐与声景</p><h1>让喜欢的音乐，<br>陪你把事情做好。</h1></div>
+    <section class="sound-panel" aria-label="音乐与自然声">
+      <div class="intro"><p class="eyebrow">慢慢书桌 / 音乐与声景</p><h1>让声音，陪你慢慢来。</h1></div>
       <div class="primary-player" id="primary-player">
-      <p class="current-series" id="current-series">午夜来信</p>
+      <p class="current-series" id="current-series">为你选好</p>
       <h2 class="current-title" id="current-title">不问来处</h2>
+      <p class="current-context" id="current-context">来自「午夜来信」</p>
       <div class="player">
         <button class="small-control" id="previous" aria-label="上一首"><svg aria-hidden="true"><use href="#i-prev"/></svg></button>
-        <button class="play-button" id="play" aria-label="播放背景声音"><svg aria-hidden="true"><use href="#i-play"/></svg><span>开始播放</span></button>
+        <button class="play-button" id="play" aria-describedby="current-title" aria-label="播放背景声音"><svg aria-hidden="true"><use href="#i-play"/></svg><span>播放《不问来处》</span></button>
         <button class="small-control" id="next" aria-label="下一首"><svg aria-hidden="true"><use href="#i-next"/></svg></button>
       </div>
       <p class="play-status" id="play-status" role="status">点一下播放，再去做手边的事</p>
+      <div class="current-mix" id="current-mix" aria-label="当前声音与音量">
+      <div class="volume-control music-volume mix-row" id="music-mix"><label class="switch-label"><span class="source-title">音乐</span><input type="checkbox" id="music-toggle" checked><span class="switch" aria-hidden="true"></span></label><input id="volume" type="range" min="0" max="100" value="38" aria-label="音乐音量"><output id="volume-value" for="volume">38%</output></div>
+      <div class="volume-control mix-row" id="rain-mix" hidden><label for="rain-volume">轻雨</label><input id="rain-volume" type="range" min="0" max="100" value="25" aria-label="轻雨音量"><output id="rain-volume-value" for="rain-volume">25%</output><button class="mix-remove" id="remove-rain" aria-label="关闭轻雨">关闭</button></div>
+      <div class="volume-control mix-row" id="fire-mix" hidden><label for="fire-volume">篝火</label><input id="fire-volume" type="range" min="0" max="100" value="28" aria-label="篝火音量"><output id="fire-volume-value" for="fire-volume">28%</output><button class="mix-remove" id="remove-fire" aria-label="关闭篝火">关闭</button></div>
+      <div class="volume-control mix-row" id="ocean-mix" hidden><label for="ocean-volume">海浪</label><input id="ocean-volume" type="range" min="0" max="100" value="30" aria-label="海边浪潮音量"><output id="ocean-volume-value" for="ocean-volume">30%</output><button class="mix-remove" id="remove-ocean" aria-label="关闭海浪">关闭</button></div>
+      <div class="volume-control mix-row" id="stream-mix" hidden><label for="stream-volume">流水</label><input id="stream-volume" type="range" min="0" max="100" value="30" aria-label="潺潺溪流音量"><output id="stream-volume-value" for="stream-volume">30%</output><button class="mix-remove" id="remove-stream" aria-label="关闭流水">关闭</button></div>
+      </div>
       <button id="share-track" class="share-track">分享这首歌 ↗</button>
       </div>
-      <section class="ambient-panel" aria-labelledby="ambient-heading"><div class="ambient-heading"><h2 id="ambient-heading">听一点自然的声音</h2><span id="ambient-summary">轻雨 / 篝火 / 海浪 / 流水</span></div><div class="ambient-controls"><div class="ambient-source"><label class="switch-label"><span class="source-title">窗外轻雨</span><input type="checkbox" id="rain-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="rain-volume" type="range" min="0" max="100" value="25" aria-label="轻雨音量"><output id="rain-volume-value" for="rain-volume">25%</output></div></div><div class="ambient-source"><label class="switch-label"><span class="source-title">壁炉篝火</span><input type="checkbox" id="fire-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="fire-volume" type="range" min="0" max="100" value="28" aria-label="篝火音量"><output id="fire-volume-value" for="fire-volume">28%</output></div></div><div class="ambient-source"><label class="switch-label"><span class="source-title">海边浪潮</span><input type="checkbox" id="ocean-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="ocean-volume" type="range" min="0" max="100" value="30" aria-label="海边浪潮音量"><output id="ocean-volume-value" for="ocean-volume">30%</output></div></div><div class="ambient-source"><label class="switch-label"><span class="source-title">潺潺溪流</span><input type="checkbox" id="stream-toggle"><span class="switch" aria-hidden="true"></span></label><div class="volume-control"><input id="stream-volume" type="range" min="0" max="100" value="30" aria-label="潺潺溪流音量"><output id="stream-volume-value" for="stream-volume">30%</output></div></div></div><p class="ambient-tip">每种声音都能单独听；播放音乐时，也可以叠加。</p></section>
-      <details class="sound-settings" open><summary>播放设置</summary>
-      <div class="play-options"><label>播放方式<select id="play-mode" aria-label="播放方式"><option value="list">列表循环</option><option value="shuffle">随机播放</option><option value="single">单曲循环</option></select></label><label>播放范围<select id="play-scope" aria-label="播放范围"><option value="series">歌曲所在系列</option><option value="all">全部音乐</option><option value="favorites">我的收藏</option></select></label></div>
-      <div class="volume-control music-volume"><label class="switch-label"><span class="source-title">音乐</span><input type="checkbox" id="music-toggle" checked><span class="switch" aria-hidden="true"></span></label><input id="volume" type="range" min="0" max="100" value="38" aria-label="音乐音量"><output id="volume-value" for="volume">38%</output></div>
-      </details>
-      <div class="series-heading"><h2>选一个系列</h2><span id="library-total">正在整理曲库</span></div>
+      <section class="sound-library" aria-labelledby="choose-heading">
+        <h2 id="choose-heading">挑选声音</h2>
+        <div class="sound-tabs" role="tablist" aria-label="声音类型">
+          <button id="music-tab" role="tab" aria-selected="true" aria-controls="music-pane" tabindex="0">音乐</button>
+          <button id="nature-tab" role="tab" aria-selected="false" aria-controls="nature-pane" tabindex="-1">自然声</button>
+        </div>
+        <div id="music-pane" role="tabpanel" aria-labelledby="music-tab">
+      <div class="series-heading"><h3>音乐系列</h3><span id="library-total">正在整理曲库</span></div>
       <div class="series-list" id="series-list" role="group" aria-label="音乐系列"></div>
       <p class="series-description" id="series-description"></p>
       <div class="search-row"><label class="sr-only" for="search">搜索曲名或作者</label><input id="search" type="search" placeholder="搜索全曲库 · 曲名或作者" autocomplete="off"><button id="clear-search" aria-label="清除搜索" hidden>×</button></div>
@@ -61,8 +71,15 @@
         <p>这几首去音乐平台听，需联网；不会加入书桌的循环播放。</p>
         <div id="related-list"></div>
       </details>
-      <details class="more-options"><summary>定时与说明 <span id="sleep-status">不定时关闭</span></summary><label class="sleep-setting">定时关闭<select id="sleep-timer" aria-label="定时关闭"><option value="0">不定时关闭</option><option value="15">15 分钟后</option><option value="30">30 分钟后</option><option value="60">60 分钟后</option><option value="90">90 分钟后</option></select></label><p class="settings-note">切到其他工作窗口，音乐会继续。系统休眠或浏览器回收标签仍可能停止播放。</p>      <div class="now-playing"><span id="now-track"></span><a id="track-credit" href="#" target="_blank" rel="noopener noreferrer"></a></div>
-<button id="open-credits" class="credits-button">曲目来源与使用许可 →</button><p class="settings-note">空格播放/暂停，Esc 退出沉浸。</p></details>
+        </div>
+        <div id="nature-pane" role="tabpanel" aria-labelledby="nature-tab" hidden>
+      <section class="ambient-panel" aria-labelledby="ambient-heading"><div class="ambient-heading"><h2 id="ambient-heading">自然声，可以单独听</h2><span id="ambient-summary">轻雨 / 篝火 / 海浪 / 流水</span></div><div class="ambient-controls"><div class="ambient-source"><label class="switch-label"><span class="source-title">窗外轻雨</span><input type="checkbox" id="rain-toggle"><span class="switch" aria-hidden="true"></span></label></div><div class="ambient-source"><label class="switch-label"><span class="source-title">壁炉篝火</span><input type="checkbox" id="fire-toggle"><span class="switch" aria-hidden="true"></span></label></div><div class="ambient-source"><label class="switch-label"><span class="source-title">海边浪潮</span><input type="checkbox" id="ocean-toggle"><span class="switch" aria-hidden="true"></span></label></div><div class="ambient-source"><label class="switch-label"><span class="source-title">潺潺溪流</span><input type="checkbox" id="stream-toggle"><span class="switch" aria-hidden="true"></span></label></div></div><p class="ambient-tip">点开就能听，可多选；已选声音在上方调音量。</p></section>
+        </div>
+      </section>
+      <details class="sound-settings" open><summary>播放与定时</summary>
+<div class="play-options" id="music-play-options"><label>播放方式<select id="play-mode" aria-label="播放方式"><option value="list">列表循环</option><option value="shuffle">随机播放</option><option value="single">单曲循环</option></select></label><label>播放范围<select id="play-scope" aria-label="播放范围"><option value="series">歌曲所在系列</option><option value="all">全部音乐</option><option value="favorites">我的收藏</option></select></label></div><label class="sleep-setting">定时关闭<select id="sleep-timer" aria-label="定时关闭"><option value="0">不定时关闭</option><option value="15">15 分钟后</option><option value="30">30 分钟后</option><option value="60">60 分钟后</option><option value="90">90 分钟后</option></select></label><p id="sleep-status" class="settings-note">不定时关闭</p></details>
+      <details class="more-options"><summary>使用说明与来源</summary><p class="settings-note">切到其他工作窗口，音乐会继续。系统休眠或浏览器回收标签仍可能停止播放。</p>      <div class="now-playing"><span id="now-track"></span><a id="track-credit" href="#" target="_blank" rel="noopener noreferrer"></a></div>
+<button id="open-credits" class="credits-button">曲目来源与使用许可 →</button><p class="settings-note">空格播放/暂停，Esc 退出安静模式。</p></details>
       <details id="analytics-settings" class="more-options" hidden><summary>匿名使用统计</summary><p class="settings-note">记录打开时间、歌曲、播放开始和听满 30 秒，帮助改进书桌。匿名编号不能识别你的真实身份。</p><label class="analytics-choice"><input id="analytics-toggle" type="checkbox">允许匿名使用统计</label></details>
     </section>
     <section class="thought-area" aria-label="给此刻的你">
@@ -72,7 +89,7 @@
     </section>
   </main>
   <div class="mini-player" id="mini-player" hidden>
-    <button id="mini-play" aria-label="播放背景声音"><svg aria-hidden="true"><use href="#i-play"/></svg></button>
+    <button id="mini-play" aria-describedby="mini-title" aria-label="播放背景声音"><svg aria-hidden="true"><use href="#i-play"/></svg></button>
     <div><span class="mini-eyebrow" id="mini-status">声音未开启</span><span id="mini-title">慢慢书桌</span></div>
     <button id="mini-mode" class="mini-mode" aria-label="切换播放方式">列表</button>
     <button id="mini-next" aria-label="下一首"><svg aria-hidden="true"><use href="#i-next"/></svg></button>
@@ -87,11 +104,11 @@
   <dialog id="credits-dialog" aria-labelledby="credits-heading"><div class="credits-header"><h2 id="credits-heading">曲目来源与使用许可</h2><button id="close-credits" aria-label="关闭曲目来源">×</button></div><p>收录曲目按各曲目所列许可署名。部分音频由MP3转AAC，部分保留原MP3；播放时做音量平衡，没有裁剪或重新编排。轻雨为合成声；篝火、海浪和流水来自独立实地录音，并非原曲的一部分；作者不因此为本应用背书。</p><p>原来的十首配乐保留，属于本项目此前制作的合成配乐。</p><div id="credits-list"></div><article><h3>自然环境声</h3><p>篝火：samarobryn · Crackling Fire（CC0）；海浪：kapilkant · Soft ocean waves sounds（CC0）；流水：Geoff Bremner · Gentle Relaxing Stream 1（CC BY 4.0）。已截取、调整音量并处理循环接缝。</p><p><a href="https://freesound.org/people/samarobryn/sounds/414767/" target="_blank" rel="noopener noreferrer">篝火来源</a> · <a href="https://freesound.org/people/kapilkant/sounds/549334/" target="_blank" rel="noopener noreferrer">海浪来源</a> · <a href="https://freesound.org/people/Geoff-Bremner-Audio/sounds/697495/" target="_blank" rel="noopener noreferrer">流水来源</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0 许可</a></p></article></dialog>
   <noscript><p class="noscript">请允许浏览器运行 JavaScript，才能使用选曲与播放功能。</p></noscript>
   <script src="tracks.js"></script>
-  <script src="audio.js?v=20260920-nature"></script>
+  <script src="audio.js?v=20260920-unified"></script>
   <script src="analytics-config.js"></script>
   <script src="analytics.js"></script>
   <script src="assets/vendor/qrcode.js"></script>
   <script src="share-card.js"></script>
-  <script src="app.js?v=20260920-nature"></script>
+  <script src="app.js?v=20260920-unified"></script>
 </body>
 </html>

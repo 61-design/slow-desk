@@ -184,7 +184,7 @@ function assertPlayer(env, playing) {
     assert.equal(env.element(id).getAttribute('aria-label'), playing ? '暂停背景声音' : '播放背景声音');
     assert.equal(env.element(id).querySelector('use').getAttribute('href'), playing ? '#i-pause' : '#i-play');
   }
-  assert.equal(env.element('play').querySelector('span').textContent, playing ? '暂停播放' : '开始播放');
+  assert.match(env.element('play').querySelector('span').textContent, playing ? /^暂停/ : /^(播放|挑选)/);
 }
 
 const array = values => Array.from(values);
@@ -221,6 +221,49 @@ async function test(name, run) {
 }
 
 (async () => {
+  await test('自然声独听和混合播放时，主/迷你播放器准确显示声音并提供适用操作', async () => {
+    const env = environment();
+    assert.equal(env.element('current-series').textContent, '为你选好');
+    assert.equal(env.element('play').querySelector('span').textContent, '播放《不问来处》');
+    await toggle(env, 'ocean-toggle', true);
+    assert.equal(env.element('current-title').textContent, '海浪');
+    assert.equal(env.element('mini-title').textContent, '海浪');
+    for (const id of ['previous','next','mini-next','mini-mode','share-track','music-play-options']) assert.equal(env.element(id).hidden, true, id);
+    assert.equal(env.element('ocean-mix').hidden, false);
+    await selectTrack(env, 'echo-public-night');
+    assert.equal(env.element('current-title').textContent, '不问来处 ＋ 海浪');
+    assert.equal(env.element('mini-title').textContent, '不问来处 ＋ 海浪');
+    assert.equal(env.element('share-track').hidden, false);
+    await toggle(env, 'music-toggle', false); assert.equal(env.element('current-title').textContent, '海浪');
+    await env.event('remove-ocean','click'); assertPlayer(env, false); assert.equal(env.element('current-title').textContent, '此刻，安静');
+  });
+  await test('分享歌曲在之前只听自然声的偏好下仍明确选中音乐，且不自动发声', async () => {
+    const env = environment({stored:JSON.stringify({trackId:'echo-public-dawn',music:false,ocean:true}),search:'?track=echo-public-night'});
+    assert.match(env.element('current-title').textContent,/不问来处/);
+    assert.equal(env.element('current-series').textContent,'朋友分享给你');
+    assert.equal(env.element('music-pane').hidden,false);
+    assert.equal(currentMedia(env).playCalls,0); assert.equal(env.contexts.length,0);
+  });
+  await test('音乐被浏览器拒绝而自然声成功时，标题只报告实际在播的声音', async () => {
+    const env = environment();
+    currentMedia(env).play = () => Promise.reject(new Error('blocked'));
+    await toggle(env, 'ocean-toggle', true); await toggle(env, 'music-toggle', true);
+    assert.equal(env.element('current-title').textContent, '海浪');
+    assert.equal(env.element('mini-title').textContent, '海浪');
+    assert.equal(env.element('share-track').hidden,true);
+    assert.match(env.element('play-status').textContent,/音乐暂时未能播放/);
+  });
+  await test('音乐/自然声入口只切换浏览，键盘切换与当前声音保持独立', async () => {
+    const env = environment(); await selectTrack(env, 'echo-public-night');
+    const media = currentMedia(env), calls = media.playCalls, saved = env.store.get(preferenceKey);
+    await env.event('nature-tab','click');
+    assert.equal(env.element('music-pane').hidden, true); assert.equal(env.element('nature-pane').hidden, false);
+    assert.equal(env.element('nature-tab').getAttribute('aria-selected'), 'true');
+    assert.equal(currentMedia(env),media); assert.equal(media.playCalls,calls); assert.equal(env.store.get(preferenceKey),saved);
+    await env.event('nature-tab','keydown',{key:'ArrowLeft'});
+    assert.equal(env.element('music-pane').hidden, false); assert.equal(env.document.activeElement,env.element('music-tab'));
+    assert.equal(media.paused,false);
+  });
   await test('暂停时点歌曲立即播放，环境声独听时选曲也会开启音乐', async () => {
     const env = environment();
     await selectTrack(env, 'echo-public-night'); assertPlayer(env, true);

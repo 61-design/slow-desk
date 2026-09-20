@@ -96,3 +96,39 @@ body[data-series=midnight]{--green:#656078}
 @media(max-width:850px){.ambient-panel{padding:13px 14px 9px}.ambient-controls{padding-top:2px;gap:16px}.ambient-source .switch-label{min-height:38px}.ambient-tip{font-size:11px}.encouragement{font-size:21px}.thought-area .scene-caption{font-size:12px}.quote-refresh{font-size:12px}.sound-settings .play-options{gap:9px}.sound-settings .play-options label{display:flex;flex-direction:column;align-items:flex-start;gap:5px}.sound-settings select{font-size:13px;min-height:36px}.sound-settings .music-volume{margin:9px 0 0}}
 
 @media(min-width:851px){.thought-area{position:sticky;align-self:start;top:calc(100svh - 250px);margin-top:max(100px,calc(100svh - 350px))}.is-immersed .thought-area{position:static;align-self:end;margin-top:50px}}
+
+/* One player describes every sound; music and nature share a browsing area. */
+.intro h1{font-size:25px;line-height:1.55;margin-bottom:24px}
+.primary-player{grid-template-columns:minmax(0,1fr) auto;row-gap:0;padding-bottom:18px;margin-bottom:22px}
+.current-series{font-size:12px;letter-spacing:.06em;margin-bottom:6px}
+.current-title{grid-column:1/-1;font-size:25px;line-height:1.45;letter-spacing:.03em}
+.current-context{grid-column:1;grid-row:3;font-size:12px;color:#62735b;margin:5px 0 0}
+.share-track{grid-column:2;grid-row:3;font-size:11px;padding:5px 0 5px 10px;min-height:32px}
+.primary-player .player{grid-row:4;margin-top:14px}
+.primary-player .play-button{max-width:none;letter-spacing:.03em;font-size:13px}
+.primary-player .play-status{grid-row:5;padding-left:0;font-size:12px;text-align:left}
+.current-mix{grid-column:1/-1;grid-row:6;border-top:1px solid #d3dbca;margin-top:12px;padding-top:6px}
+.current-mix .mix-row{margin:0;min-height:40px;gap:10px}.mix-row label{font-size:12px;min-width:28px}.mix-row output{font-size:11px}.mix-remove{font-size:11px;background:none;padding:8px 0 8px 5px;color:#65745e;min-height:36px}.mix-row .switch-label{min-width:65px}
+.sound-library>h2{font-size:14px;font-weight:500;margin:0 0 12px;letter-spacing:.06em}
+.sound-tabs{display:flex;gap:8px;margin:0 0 18px;padding:4px;border:1px solid #c7cfbf;background:#edf0e5bd;border-radius:9px}
+.sound-tabs button{flex:1;min-height:40px;border-radius:6px;background:transparent;font-size:14px;color:#62715b}
+.sound-tabs button[aria-selected=true]{background:#f8f8f0;box-shadow:0 1px 5px #334b3410;color:#344a3d;font-weight:500}
+.series-heading h3{font-size:12px;font-weight:400;margin:0;color:#62735b}.series-heading>span{font-size:11px}
+.series-description{font-size:12px}.track-title{font-size:14px}.track-description{font-size:12px;letter-spacing:0}.track-time{font-size:11px}
+.ambient-panel{margin-bottom:0}.ambient-controls{row-gap:12px}.ambient-source .switch-label{min-height:48px}.ambient-source .source-title{font-size:13px}.ambient-tip{font-size:12px}.ambient-heading>span{font-size:12px}
+.sound-settings{margin-top:22px;padding-top:10px;border-top:1px solid #cbd3c2}.sound-settings summary{font-size:13px;min-height:40px}.sound-settings .sleep-setting{font-size:13px;margin:14px 0 0}.sound-settings #sleep-status{margin:6px 0 0;font-size:12px}.sound-settings .play-options label{font-size:12px}
+.mini-player #mini-title{font-size:12px;max-width:230px;letter-spacing:.02em}.mini-player>div{max-width:none}.mini-eyebrow{font-size:10px}.skip-tip{font-size:11px}
+@media(max-width:850px){
+  .site-header{height:80px;padding-top:16px;padding-bottom:16px}
+  .intro h1{font-size:23px;margin-bottom:21px}
+  .current-title{font-size:25px}.current-context{font-size:11px}
+  .primary-player{margin-bottom:20px;padding-bottom:18px}
+  .primary-player .play-status{font-size:11px;text-align:left}
+  .primary-player .player{gap:10px}.primary-player .play-button{height:46px;font-size:13px}
+  .current-mix .volume-control input{min-height:34px}.mix-row .switch-label{min-height:40px}
+  .sound-tabs{margin-bottom:15px}.series-button{font-size:12px}.series-description{margin:10px 0}
+  .track-list{max-height:none;overflow:visible}.track{min-height:66px;padding-left:6px;padding-right:6px;gap:8px}
+  .favorite-button{width:32px}.dislike-button{width:43px;font-size:10px}.track-title{letter-spacing:.02em}
+  .ambient-panel{padding:13px 14px}.ambient-controls{gap:10px 16px}.ambient-source .switch-label{min-height:52px}
+  .sound-settings .play-options{margin-bottom:16px}
+}

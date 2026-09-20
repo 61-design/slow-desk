@@ -157,6 +157,8 @@
       const queue = this.queue();
       return {
         playing: this.playing, volume: this.volume, music: this.music,
+        musicPlaying: Boolean(this.active && this.music && this.musicRunning && !this.audio.paused),
+        playingEffects: effectKinds.filter(kind => this.active && this[kind] && this[`${kind}Source`] && this.context?.state === 'running'),
         trackId: this.trackId, trackTitle: this.currentTrack().title,
         rain: this.rain, fire: this.fire, ocean: this.ocean, stream: this.stream,
         rainVolume: this.rainVolume, fireVolume: this.fireVolume, oceanVolume: this.oceanVolume, streamVolume: this.streamVolume,
