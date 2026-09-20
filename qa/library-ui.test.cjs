@@ -113,7 +113,7 @@ function documentFromHTML(html) {
   return { document, Element };
 }
 
-function environment({ stored = null, rainAvailable = true, storageBlocked = false, search = '', mobile = false, observerSupported = false } = {}) {
+function environment({ stored = null, rainAvailable = true, storageBlocked = false, search = '', mobile = false, observerSupported = false, legacyMediaQuery = false } = {}) {
   const { document, Element } = documentFromHTML(files['index.html']);
   let now = 0, timerId = 0;
   const timers = new Map(), audios = [], writes = [], contexts = [];
@@ -141,7 +141,7 @@ function environment({ stored = null, rainAvailable = true, storageBlocked = fal
   class FakeDate extends Date { constructor(value) { super(value === undefined ? epoch + now : value); } static now() { return epoch + now; } }
   const window = eventTarget();
   window.location = {search};
-  window.matchMedia = () => Object.assign(eventTarget(), {matches:mobile});
+  window.matchMedia = () => legacyMediaQuery ? {matches:mobile, addListener(listener) { this.listener = listener; }} : Object.assign(eventTarget(), {matches:mobile});
   let intersect;
   if (observerSupported) window.IntersectionObserver = class { constructor(callback) { intersect=callback; } observe() {} };
   if (rainAvailable) window.AudioContext = FakeContext;
@@ -154,12 +154,16 @@ function environment({ stored = null, rainAvailable = true, storageBlocked = fal
     setTimeout(callback, delay) { const id = ++timerId; timers.set(id, { callback, due: now + delay }); return id; },
     clearTimeout(id) { timers.delete(id); }
   });
-  for (const name of ['tracks.js', 'audio.js', 'analytics-config.js', 'analytics.js', 'app.js']) vm.runInContext(files[name], sandbox, { filename: name });
+  const startupErrors = [];
+  for (const name of ['tracks.js', 'audio.js', 'analytics-config.js', 'analytics.js', 'app.js']) {
+    try { vm.runInContext(files[name], sandbox, { filename: name }); }
+    catch (error) { if (!legacyMediaQuery) throw error; startupErrors.push(error.message); }
+  }
   const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
   const element = id => {
     const result = document.getElementById(id); assert.ok(result, `Actual HTML element #${id} is required`); return result;
   };
-  return { document, window, audios, writes, contexts, store, element, flush,
+  return { document, window, audios, writes, contexts, store, element, flush, startupErrors,
     primaryVisible(value) { intersect([{isIntersecting:value}]); },
     tracks: window.CALM_TRACKS,
     async event(id, type, values = {}) { const result = element(id).dispatch(type, values); await flush(); return result; },
@@ -221,6 +225,21 @@ async function test(name, run) {
 }
 
 (async () => {
+  await test('旧版媒体查询接口下，首屏播放暂停与自然声独听都直接生效', async () => {
+    const env = environment({legacyMediaQuery:true,mobile:true});
+    await env.event('play','click'); env.advance(1000);
+    assert.equal(currentMedia(env).paused,false, '首屏播放必须直接启动歌曲，无需点歌曲标题');
+    assert.ok(currentMedia(env).volume > 0);
+    await env.event('play','click'); env.advance(300);
+    assert.equal(currentMedia(env).paused,true);
+    await env.event('nature-tab','click');
+    assert.equal(env.element('nature-pane').hidden,false);
+    await toggle(env,'ocean-toggle',true);
+    assert.equal(currentMedia(env).paused,true, '自然声独听不得依赖音乐');
+    assert.ok(env.contexts[0].sources.some(source => source.started && !source.stopped));
+    assert.equal(env.element('current-title').textContent,'海浪');
+    assert.deepEqual(env.startupErrors,[]);
+  });
   await test('自然声独听和混合播放时，主/迷你播放器准确显示声音并提供适用操作', async () => {
     const env = environment();
     assert.equal(env.element('current-series').textContent, '为你选好');

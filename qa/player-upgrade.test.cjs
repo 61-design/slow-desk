@@ -92,6 +92,24 @@ async function flush() { for (let i = 0; i < 30; i++) await Promise.resolve(); }
 async function ended(env) { env.engine.audio.finish(); await flush(); }
 
 (async () => {
+  await test('播放许可一直不返回时给出重试提示，迟到结果不偷播，重试可恢复', async () => {
+    const env = environment(), wait = deferred(); env.engine.audio.playWait = wait;
+    const started = env.engine.start(); await flush(); env.advance(15000);
+    assert.equal(env.engine.status, 'error'); assert.match(env.engine.message, /超时/);
+    assert.equal(env.engine.active, false);
+    wait.resolve(); await started; assert.equal(env.engine.audio.paused, true);
+    env.engine.audio.playWait = null; await env.engine.start(); env.advance(1000);
+    assert.equal(env.engine.playing, true); assert.ok(env.engine.audio.volume > 0);
+  });
+  await test('仅自然声等待解锁时超时可重试，不依赖音乐解锁', async () => {
+    const wait = deferred(), env = environment({resume:wait});
+    env.engine.setMusic(false); env.engine.setRain(true);
+    const started = env.engine.start(); await flush(); env.advance(15000);
+    assert.equal(env.engine.status, 'error'); assert.match(env.engine.message, /超时/);
+    wait.resolve(); await started; assert.ok(!env.engine.rainSource);
+    await env.engine.start(); assert.equal(env.engine.rainSource.started, true);
+    assert.equal(env.engine.audio.playCalls, 0);
+  });
   await test('录音载入途中暂停，完成后不会偷跑；重播复用已解码声音', async () => {
     const waiting = deferred(); let requests = 0;
     const env = environment({fetcher:() => {requests++; return waiting.promise;}});

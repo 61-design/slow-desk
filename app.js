@@ -226,7 +226,10 @@
     });
     observer.observe($('play'));
   }
-  mobile.addEventListener('change', updateMini);
+  // Older embedded WebKit exposes only addListener; a layout enhancement must
+  // never prevent the playback controls below from being wired up.
+  if (typeof mobile.addEventListener === 'function') mobile.addEventListener('change', updateMini);
+  else if (typeof mobile.addListener === 'function') mobile.addListener(updateMini);
   updateMini();
 
   function setSoundTab(kind, focus = false) {

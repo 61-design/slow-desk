@@ -39,6 +39,7 @@
       this.status = 'off';
       this.message = '声音未开启';
       this.intent = 0;
+      this.startTimer = null;
       this.fades = new Map();
       this.retiring = new Set();
       this.effectRetiring = new Set();
@@ -202,9 +203,9 @@
         this.message = '声音已暂停';
       } else {
         this.status = 'error';
-        this.message = this.musicError && this.musicError.name === 'NotAllowedError'
+        this.message = (this.musicError || this.effectsError)?.name === 'NotAllowedError'
           ? '浏览器还没有允许播放，请再轻点一下播放按钮'
-          : '声音暂时未能播放，请再点一次播放或换一首音乐';
+          : this.music ? '音乐暂时未能载入，请检查网络后重试播放' : '自然声暂时未能载入，请检查网络后重试播放';
       }
       this.emit();
     }
@@ -306,6 +307,14 @@
       this.musicError = null;
       this.effectsError = null;
       this.refreshState(true);
+      clearTimeout(this.startTimer);
+      this.startTimer = setTimeout(() => {
+        if (request !== this.intent || !this.active || this.playing) return;
+        this.pause(true);
+        this.status = 'error';
+        this.message = '声音启动超时，请检查网络后点“重试播放”';
+        this.emit();
+      }, 15000);
       // Start every source inside the original gesture, before awaiting. Merely
       // selecting preferences while paused never calls play or creates buffers.
       const effectsReady = wantsEffects ? this.prepareEffects() : Promise.resolve();
@@ -348,11 +357,14 @@
         } finally { settle(); }
       })() : Promise.resolve();
       await Promise.all([effectsTask, musicTask]);
+      if (current()) { clearTimeout(this.startTimer); this.startTimer = null; }
       if (!pending && current()) this.refreshState();
       return current() && this.playing;
     }
 
     pause(immediate = false) {
+      clearTimeout(this.startTimer);
+      this.startTimer = null;
       const request = ++this.intent;
       const media = this.audio;
       this.active = false;
