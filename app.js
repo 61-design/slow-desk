@@ -249,7 +249,7 @@
   }
   function setImmersed(value) {
     immersed = value; document.body.classList.toggle('is-immersed',value); updateMini();
-    $('immersion').setAttribute('aria-pressed',String(value)); $('immersion').querySelector('span').textContent = value ? '返回选声' : '安静模式';
+    $('immersion').setAttribute('aria-pressed',String(value)); $('immersion').querySelector('span').textContent = value ? '展开界面' : '收起界面';
     $('immersion').querySelector('use').setAttribute('href',value ? '#i-close' : '#i-expand'); $('immersion').focus();
   }
   ['play','mini-play'].forEach(id => $(id).addEventListener('click',togglePlayback));
