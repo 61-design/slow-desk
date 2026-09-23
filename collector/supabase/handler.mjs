@@ -44,7 +44,6 @@ export async function handle(request,env){
    return reply(200,{token:expires+'.'+signature});
   }
   if(path==='/api/stats' && request.method==='GET'){
-   if(!await authorize(request,env.key,async()=>(await rpc('slow_desk_admin_config',{})).admin_key_hash))return reply(401);
    const params=new URL(request.url).searchParams;
    const days=Number(params.get('days')||7);if(![7,30].includes(days))return reply(400);
    return reply(200,await rpc('slow_desk_stats',{p_days:days,p_test:params.get('test')==='1'}));
